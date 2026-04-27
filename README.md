@@ -11,7 +11,6 @@ Clawpilot is a set of **extensions** for [GitHub Copilot CLI](https://github.com
 | **spawn** | Launch parallel background Copilot sessions | ✅ Ready |
 | **scheduler** | Schedule tasks via systemd user timers | ✅ Ready |
 | **heartbeat** | Proactive checks with session-start injection | ✅ Ready |
-| **channels** | Multi-channel messaging (WhatsApp, Discord, etc.) | ✅ Ready |
 | **daemon** | Always-on service dispatching from a message queue | ✅ Ready |
 | **orchestrator** | Self-driving task engine | ✅ Ready |
 | **memory-db** | SQLite-backed memory with FTS5 search | ✅ Ready |
@@ -33,21 +32,6 @@ cd ~/.clawpilot
 ```
 
 Then restart Copilot CLI (or run `/clear`). Extensions load automatically.
-
-### Channel Setup (optional)
-
-Channels uses OpenClaw CLI as the messaging backend:
-
-```bash
-# Install OpenClaw
-curl -fsSL https://get.openclaw.ai | bash
-openclaw configure
-
-# Link channels
-openclaw channels login --channel whatsapp   # Scan QR
-openclaw channels login --channel discord    # Bot token
-openclaw channels login --channel telegram   # Bot token
-```
 
 ### Vault Setup (optional)
 

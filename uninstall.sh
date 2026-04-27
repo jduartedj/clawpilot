@@ -4,7 +4,7 @@ set -euo pipefail
 COPILOT_EXT_DIR="${HOME}/.copilot/extensions"
 CLAWPILOT_STATE="${HOME}/.clawpilot"
 
-EXTENSIONS=(spawn scheduler heartbeat channels daemon orchestrator memory-db vault fallback)
+EXTENSIONS=(spawn scheduler heartbeat daemon orchestrator memory-db vault fallback)
 
 echo "🦞 Clawpilot CLI — Uninstalling extensions"
 echo ""

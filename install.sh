@@ -5,7 +5,7 @@ CLAWPILOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 COPILOT_EXT_DIR="${HOME}/.copilot/extensions"
 CLAWPILOT_STATE="${HOME}/.clawpilot"
 
-EXTENSIONS=(spawn scheduler heartbeat channels daemon orchestrator memory-db vault fallback)
+EXTENSIONS=(spawn scheduler heartbeat daemon orchestrator memory-db vault fallback)
 
 echo "🦞 Clawpilot CLI — Installing extensions"
 echo ""

@@ -24,11 +24,6 @@ You have access to `clawpilot_*` tools for background sessions, scheduling, hear
 - Heartbeat results with `urgent: true` are highlighted prominently
 - Good candidates: email checks, service health, calendar events, security scans
 
-### Messaging
-- Use `clawpilot_send_message` to notify the user on WhatsApp, Discord, Telegram, etc.
-- Ask before sending external messages unless urgency requires it
-- Requires OpenClaw CLI with configured channels
-
 ### Memory
 - Use `clawpilot_memory_store` for important decisions, events, and lessons learned
 - Use `clawpilot_memory_search` to find past decisions and context (FTS5 syntax)
