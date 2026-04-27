@@ -23,6 +23,14 @@ function sqlite(sql, dbPath = DB_PATH) {
     });
 }
 
+function sqliteExec(args) {
+    return new Promise((resolve) => {
+        execFile("sqlite3", args, { timeout: 15000 }, (err, stdout, stderr) => {
+            resolve({ ok: !err, stdout: stdout?.trim() || "", stderr: stderr?.trim() || "" });
+        });
+    });
+}
+
 async function ensureSchema() {
     await ensureDir(join(homedir(), ".clawpilot"));
     await sqlite(`
@@ -76,9 +84,11 @@ const session = await joinSession({
                 await ensureSchema();
                 const limit = args.limit || 20;
                 const escaped = args.query.replace(/'/g, "''");
-                const result = await sqlite(
-                    `.mode json\nSELECT m.id, m.date, m.source, substr(m.content, 1, 500) as content, m.tags FROM memories m JOIN memory_fts f ON m.id = f.rowid WHERE memory_fts MATCH '${escaped}' ORDER BY rank LIMIT ${limit};`
-                );
+                const result = await sqliteExec([
+                    "-json",
+                    DB_PATH,
+                    `SELECT m.id, m.date, m.source, substr(m.content, 1, 500) as content, m.tags FROM memories m JOIN memory_fts f ON m.id = f.rowid WHERE memory_fts MATCH '${escaped}' ORDER BY rank LIMIT ${limit};`,
+                ]);
                 if (!result.ok || !result.stdout) return "No results found.";
                 return result.stdout;
             },
@@ -138,9 +148,11 @@ const session = await joinSession({
                 await ensureSchema();
                 const days = args.days || 30;
                 const limit = args.limit || 20;
-                const result = await sqlite(
-                    `.mode json\nSELECT id, date, source, substr(content, 1, 300) as preview, tags FROM memories WHERE date >= date('now', '-${days} days') ORDER BY date DESC LIMIT ${limit};`
-                );
+                const result = await sqliteExec([
+                    "-json",
+                    DB_PATH,
+                    `SELECT id, date, source, substr(content, 1, 300) as preview, tags FROM memories WHERE date >= date('now', '-${days} days') ORDER BY date DESC LIMIT ${limit};`,
+                ]);
                 if (!result.ok || !result.stdout) return "No recent memories found.";
                 return result.stdout;
             },

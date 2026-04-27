@@ -12,11 +12,11 @@ Clawpilot is a set of **extensions** for [GitHub Copilot CLI](https://github.com
 | **scheduler** | Schedule tasks via systemd user timers | ✅ Ready |
 | **heartbeat** | Proactive checks with session-start injection | ✅ Ready |
 | **channels** | Multi-channel messaging (WhatsApp, Discord, etc.) | ✅ Ready |
-| **daemon** | Always-on service dispatching from a message queue | 🚧 Planned |
-| **orchestrator** | Self-driving task engine | 🚧 Planned |
-| **memory-db** | SQLite-backed memory with FTS5 search | 🚧 Planned |
-| **vault** | age-encrypted local secrets | 🚧 Planned |
-| **fallback** | Multi-model fallback on errors | 🚧 Planned |
+| **daemon** | Always-on service dispatching from a message queue | ✅ Ready |
+| **orchestrator** | Self-driving task engine | ✅ Ready |
+| **memory-db** | SQLite-backed memory with FTS5 search | ✅ Ready |
+| **vault** | age-encrypted local secrets | ✅ Ready |
+| **fallback** | Multi-model fallback on errors | ✅ Ready |
 
 ## Prerequisites
 
