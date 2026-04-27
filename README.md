@@ -34,6 +34,28 @@ cd ~/.clawpilot
 
 Then restart Copilot CLI (or run `/clear`). Extensions load automatically.
 
+### Channel Setup (optional)
+
+Channels uses OpenClaw CLI as the messaging backend:
+
+```bash
+# Install OpenClaw
+curl -fsSL https://get.openclaw.ai | bash
+openclaw configure
+
+# Link channels
+openclaw channels login --channel whatsapp   # Scan QR
+openclaw channels login --channel discord    # Bot token
+openclaw channels login --channel telegram   # Bot token
+```
+
+### Vault Setup (optional)
+
+```bash
+# Install age for encrypted secrets
+sudo apt install age
+```
+
 ## Update
 
 ```bash

@@ -111,10 +111,31 @@ Send and read messages across chat platforms.
 | `clawpilot_read_messages` | Read recent messages |
 | `clawpilot_channel_status` | Show all configured channels |
 
-### Supported channels
-WhatsApp, Discord, Telegram, Signal, Slack, and any channel configured in OpenClaw.
+### Setup
 
-> **Note:** Requires OpenClaw CLI with configured channels. Install OpenClaw and run `openclaw channels login` to set up.
+Channels uses **OpenClaw CLI** as the backend. Set it up once:
+
+```bash
+# 1. Install OpenClaw (if not already installed)
+curl -fsSL https://get.openclaw.ai | bash
+
+# 2. Configure the gateway
+openclaw configure
+
+# 3. Link your channels
+openclaw channels login --channel whatsapp    # Scan QR code
+openclaw channels login --channel telegram    # Enter bot token
+openclaw channels login --channel discord     # Enter bot token
+openclaw channels login --channel signal      # Link device
+
+# 4. Verify
+openclaw status
+```
+
+Once channels are linked in OpenClaw, Clawpilot can send/read messages through them automatically. No additional Clawpilot configuration needed.
+
+### Supported channels
+WhatsApp, Discord, Telegram, Signal, Slack, Matrix, Google Chat, Microsoft Teams, IRC, and any channel supported by OpenClaw.
 
 ---
 
