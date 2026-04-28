@@ -8,6 +8,11 @@ import { homedir } from "node:os";
 
 const SYSTEMD_DIR = join(homedir(), ".config", "systemd", "user");
 const STATE_DIR = join(homedir(), ".clawpilot", "scheduler");
+const OPENCLAW_CRON_DIR = join(homedir(), ".openclaw", "cron");
+const OPENCLAW_JOBS_FILE = join(OPENCLAW_CRON_DIR, "jobs.json");
+const OPENCLAW_STATE_FILE = join(OPENCLAW_CRON_DIR, "jobs-state.json");
+const OPENCLAW_RUNS_DIR = join(OPENCLAW_CRON_DIR, "runs");
+const OPENCLAW_WORKSPACE = join(homedir(), "clawd");
 const COPILOT_BIN = "copilot";
 
 async function ensureDir(dir) {
@@ -24,6 +29,134 @@ function exec(cmd, args) {
 
 function unitName(name) {
     return `clawpilot-${name.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+}
+
+function sanitizeName(name) {
+    return String(name || "").replace(/[^a-zA-Z0-9_-]/g, "-");
+}
+
+function shellSingleQuote(value) {
+    return `'${String(value).replace(/'/g, "'\\''")}'`;
+}
+
+function formatDate(ms) {
+    if (!ms) return "-";
+    return new Date(ms).toISOString();
+}
+
+function openclawRef(job) {
+    return `openclaw:${job.id}`;
+}
+
+function formatDuration(ms) {
+    if (!Number.isFinite(ms)) return "-";
+    if (ms % 86400000 === 0) return `${ms / 86400000}d`;
+    if (ms % 3600000 === 0) return `${ms / 3600000}h`;
+    if (ms % 60000 === 0) return `${ms / 60000}m`;
+    if (ms % 1000 === 0) return `${ms / 1000}s`;
+    return `${ms}ms`;
+}
+
+function formatOpenClawSchedule(schedule) {
+    if (!schedule || typeof schedule !== "object") return "-";
+    if (schedule.kind === "cron") return `${schedule.expr || "-"} ${schedule.tz || ""}`.trim();
+    if (schedule.kind === "every") return `every ${formatDuration(Number(schedule.everyMs))}`;
+    if (schedule.kind === "at") return `at ${schedule.at || "-"}`;
+    return schedule.kind || "-";
+}
+
+async function readJsonFile(path, fallback) {
+    try {
+        return JSON.parse(await readFile(path, "utf8"));
+    } catch (err) {
+        if (err?.code === "ENOENT") return fallback;
+        throw err;
+    }
+}
+
+async function readOpenClawCrons() {
+    const jobsDoc = await readJsonFile(OPENCLAW_JOBS_FILE, { jobs: [] });
+    const stateDoc = await readJsonFile(OPENCLAW_STATE_FILE, { jobs: {} });
+    const jobs = Array.isArray(jobsDoc.jobs) ? jobsDoc.jobs : [];
+    const states = stateDoc.jobs && typeof stateDoc.jobs === "object" ? stateDoc.jobs : {};
+    return { jobs, states };
+}
+
+async function findOpenClawJob(ref) {
+    if (!String(ref || "").startsWith("openclaw:")) return null;
+    const needle = String(ref).slice("openclaw:".length).trim();
+    if (!needle) return null;
+
+    const { jobs, states } = await readOpenClawCrons();
+    const normalizedNeedle = sanitizeName(needle).toLowerCase();
+    const job = jobs.find((candidate) => {
+        const id = String(candidate.id || "");
+        return id === needle ||
+            id.startsWith(needle) ||
+            sanitizeName(candidate.name).toLowerCase() === normalizedNeedle;
+    });
+    if (!job) return null;
+    return { job, state: states[job.id]?.state || {} };
+}
+
+function formatOpenClawCronList(jobs, states) {
+    if (!jobs.length) return "No OpenClaw crons found.";
+    const header = "SOURCE     REF                                      NEXT RUN                  LAST STATUS  SCHEDULE                 NAME";
+    const rows = jobs
+        .slice()
+        .sort((a, b) => (states[a.id]?.state?.nextRunAtMs || Number.MAX_SAFE_INTEGER) -
+            (states[b.id]?.state?.nextRunAtMs || Number.MAX_SAFE_INTEGER))
+        .map((job) => {
+            const state = states[job.id]?.state || {};
+            const schedule = formatOpenClawSchedule(job.schedule);
+            const status = job.enabled === false ? "disabled" : (state.lastStatus || "-");
+            return [
+                "openclaw",
+                openclawRef(job),
+                formatDate(state.nextRunAtMs),
+                status,
+                schedule,
+                job.name || "(unnamed)",
+            ].join("  ");
+        });
+    return [header, ...rows].join("\n");
+}
+
+function buildOpenClawPrompt(job) {
+    const message = job.payload?.message || "";
+    return [
+        `Imported OpenClaw cron: ${job.name || job.id}`,
+        `OpenClaw job ID: ${job.id}`,
+        `OpenClaw agent ID: ${job.agentId || "main"}`,
+        "",
+        "Run the original cron task below as a Clawpilot scheduled task.",
+        "",
+        message,
+    ].join("\n");
+}
+
+async function runOpenClawJob(job) {
+    await ensureDir(STATE_DIR);
+    const slug = sanitizeName(`${job.name || job.id}-${String(job.id || "").slice(0, 8)}`) || "openclaw-cron";
+    const promptFile = join(STATE_DIR, `${slug}.openclaw.prompt`);
+    const unit = `clawpilot-openclaw-${slug}-${Date.now()}`;
+    const cwd = OPENCLAW_WORKSPACE;
+    await writeFile(promptFile, buildOpenClawPrompt(job), { mode: 0o600 });
+
+    const command = `exec ${COPILOT_BIN} -p "$(cat ${shellSingleQuote(promptFile)})" --allow-all --autopilot --silent --no-ask-user --name ${shellSingleQuote(`openclaw-cron-${slug}`)}`;
+    const result = await exec("systemd-run", [
+        "--user",
+        "--collect",
+        `--unit=${unit}`,
+        `--working-directory=${cwd}`,
+        "/bin/bash",
+        "-lc",
+        command,
+    ]);
+    if (!result.ok) {
+        return { textResultForLlm: `Failed to trigger imported OpenClaw cron: ${result.stderr}`, resultType: "failure" };
+    }
+    return `Triggered imported OpenClaw cron '${job.name || job.id}'.\nUnit: ${unit}\nLogs: journalctl --user -u ${unit} --no-pager`;
 }
 
 function buildServiceUnit(name, cwd, model) {
@@ -137,16 +270,17 @@ const session = await joinSession({
         },
         {
             name: "clawpilot_schedule_list",
-            description: "List all scheduled Clawpilot tasks with their next run time.",
+            description: "List all scheduled Clawpilot tasks with their next run time, including imported OpenClaw crons if present.",
             parameters: { type: "object", properties: {} },
             handler: async () => {
                 const result = await exec("systemctl", [
                     "--user", "list-timers", "clawpilot-*", "--no-pager", "--all",
                 ]);
-                if (!result.stdout || result.stdout.includes("0 timers")) {
-                    return "No scheduled tasks.";
-                }
-                return result.stdout;
+                const local = (!result.stdout || result.stdout.includes("0 timers"))
+                    ? "No native Clawpilot scheduled tasks."
+                    : result.stdout;
+                const { jobs, states } = await readOpenClawCrons();
+                return `${local}\n\n${formatOpenClawCronList(jobs, states)}`;
             },
         },
         {
@@ -160,6 +294,15 @@ const session = await joinSession({
                 required: ["name"],
             },
             handler: async (args) => {
+                const openclaw = await findOpenClawJob(args.name);
+                if (openclaw) {
+                    return {
+                        textResultForLlm:
+                            "Imported OpenClaw crons are read-only in Clawpilot. Disable or delete them with OpenClaw's cron tools.",
+                        resultType: "failure",
+                    };
+                }
+
                 const name = args.name.replace(/[^a-zA-Z0-9_-]/g, "-");
                 const unit = unitName(name);
 
@@ -189,6 +332,11 @@ const session = await joinSession({
                 required: ["name"],
             },
             handler: async (args) => {
+                const openclaw = await findOpenClawJob(args.name);
+                if (openclaw) {
+                    return runOpenClawJob(openclaw.job);
+                }
+
                 const name = args.name.replace(/[^a-zA-Z0-9_-]/g, "-");
                 const unit = unitName(name);
                 const result = await exec("systemctl", ["--user", "start", `${unit}.service`]);
@@ -211,6 +359,19 @@ const session = await joinSession({
                 required: ["name"],
             },
             handler: async (args) => {
+                const openclaw = await findOpenClawJob(args.name);
+                if (openclaw) {
+                    const lines = Number(args.lines || 100);
+                    try {
+                        const content = await readFile(join(OPENCLAW_RUNS_DIR, `${openclaw.job.id}.jsonl`), "utf8");
+                        const tail = content.trimEnd().split("\n").slice(-lines).join("\n");
+                        return tail || "(no OpenClaw logs yet)";
+                    } catch (err) {
+                        if (err?.code === "ENOENT") return "(no OpenClaw logs yet)";
+                        throw err;
+                    }
+                }
+
                 const name = args.name.replace(/[^a-zA-Z0-9_-]/g, "-");
                 const unit = unitName(name);
                 const result = await exec("journalctl", [

@@ -9,7 +9,7 @@ Clawpilot is a set of **extensions** for [GitHub Copilot CLI](https://github.com
 | Extension | What It Does | Status |
 |-----------|-------------|--------|
 | **spawn** | Launch parallel background sessions + auto-resume on exit | ✅ |
-| **scheduler** | Schedule recurring tasks via systemd user timers | ✅ |
+| **scheduler** | Schedule recurring tasks via systemd user timers + read OpenClaw crons | ✅ |
 | **heartbeat** | Proactive checks with session-start notification injection | ✅ |
 | **channels** | Native messaging (Telegram, Discord, Slack) | ✅ |
 | **daemon** | Always-on systemd service dispatching from an inbox queue | ✅ |
@@ -82,6 +82,7 @@ Once running, just ask naturally:
 - **Auto-resume** — quit mid-task and work continues in background; on return, results are handed back seamlessly
 - **Persistent session** — `clawpilot` command always resumes your "main" session
 - **Smart workspace** — auto-detects OpenClaw workspace dir, falls back to `~/clawd` or `~/`
+- **OpenClaw-aware scheduler** — imports existing `~/.openclaw/cron` jobs as read-only `openclaw:<id>` entries
 - **No npm dependencies** — all extensions use Node.js built-ins only
 - **Security reviewed** — prompts stored in files (not systemd units), vault uses age encryption with `0700`/`0600` permissions, tokens validated on setup
 - **Linux-first** — systemd for scheduling/daemon; macOS support planned

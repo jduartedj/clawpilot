@@ -245,11 +245,21 @@ Create a scheduled task.
 
 #### `clawpilot_schedule_list`
 
-List all Clawpilot timers with next run time. Output is from `systemctl --user list-timers`.
+List all native Clawpilot timers with next run time and any existing OpenClaw crons discovered in `~/.openclaw/cron`.
+
+OpenClaw jobs are shown as read-only imported refs:
+
+```
+openclaw:<job-id>
+```
+
+They are not duplicated into systemd timers, so Clawpilot will not double-run existing OpenClaw jobs. Use the `openclaw:<job-id>` ref with `clawpilot_schedule_logs` to read the OpenClaw JSONL run log, or with `clawpilot_schedule_run_now` to manually run the same prompt through Clawpilot.
 
 #### `clawpilot_schedule_cancel`
 
 Stop, disable, and remove a scheduled task and its systemd units.
+
+Imported `openclaw:<job-id>` refs are read-only in Clawpilot. Disable or delete those jobs with OpenClaw's cron tools.
 
 | Parameter | Required | Description |
 |-----------|----------|-------------|
@@ -263,6 +273,8 @@ Manually trigger a scheduled task immediately.
 |-----------|----------|-------------|
 | `name` | ✅ | Task name to trigger |
 
+For imported OpenClaw jobs, pass `openclaw:<job-id>` or `openclaw:<job-name>`. Clawpilot starts a one-shot `systemd-run --user` unit that runs the original OpenClaw cron prompt through `copilot -p`; it does not modify the OpenClaw cron definition.
+
 #### `clawpilot_schedule_logs`
 
 View journald logs from a scheduled task's recent runs.
@@ -272,6 +284,8 @@ View journald logs from a scheduled task's recent runs.
 | `name` | ✅ | Task name |
 | `lines` | | Number of log lines (default: 100) |
 
+For imported OpenClaw jobs, pass `openclaw:<job-id>` to tail `~/.openclaw/cron/runs/<job-id>.jsonl`.
+
 ### How It Works
 
 1. Prompt written to `~/.clawpilot/scheduler/{name}.prompt` (not inline in unit)
@@ -279,6 +293,7 @@ View journald logs from a scheduled task's recent runs.
 3. Service runs `/bin/bash -c 'exec copilot -p "$(cat promptfile)" --allow-all ...'`
 4. `systemctl --user enable --now` activates the timer
 5. Logs go to journald (queryable via `journalctl --user`)
+6. OpenClaw cron metadata is read from `~/.openclaw/cron/jobs.json` and `jobs-state.json`; logs are read from `~/.openclaw/cron/runs/`
 
 ---
 
