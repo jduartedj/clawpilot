@@ -14,19 +14,27 @@ function winCommandQuote(value) {
 
 async function restrictWindowsFileAccess(path) {
     if (!IS_WINDOWS) return;
-    const account = process.env.USERDOMAIN && process.env.USERNAME
-        ? `${process.env.USERDOMAIN}\\${process.env.USERNAME}`
-        : process.env.USERNAME;
-    if (!account) {
+    const username = process.env.USERNAME;
+    if (!username) {
         throw new Error("Cannot restrict Windows file ACLs because USERNAME is not set.");
     }
-    const result = await exec("icacls.exe", [
+    const domain = process.env.USERDOMAIN;
+    const account = username.toUpperCase() !== "SYSTEM" && !username.endsWith("$")
+        ? (domain ? `${domain}\\${username}` : username)
+        : null;
+    const baseGrants = [
+        "*S-1-5-18:F",
+        "*S-1-5-32-544:F",
+    ];
+    const applyAcl = (grants) => exec("icacls.exe", [
         path,
         "/inheritance:r",
         "/grant:r",
-        `${account}:F`,
-        "*S-1-5-18:F",
-        "*S-1-5-32-544:F",
+        ...grants,
+    ]);
+    let result = await applyAcl([
+        ...(account ? [`${account}:F`] : []),
+        ...baseGrants,
     ]);
     if (!result.ok) {
         throw new Error(`Failed to restrict ACLs for ${path}: ${result.stderr || result.stdout}`);
