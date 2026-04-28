@@ -134,6 +134,7 @@ cd $env:LOCALAPPDATA\Clawpilot\src
 - **[Linux Refactor Plan](docs/PLAN-LINUX-REFACTOR.md)** — platform abstraction work before Windows/macOS
 - **[Windows Implementation Plan](docs/PLAN-WINDOWS-IMPLEMENTATION.md)** — Task Scheduler and PowerShell support
 - **[macOS Implementation Plan](docs/PLAN-MACOS-IMPLEMENTATION.md)** — launchd and LaunchAgent support
+- **[Gateway Compatibility Plan](docs/PLAN-GATEWAY-COMPATIBILITY.md)** — OpenClaw-style Clawpilot gateway strategy and parked features
 
 ## License
 
