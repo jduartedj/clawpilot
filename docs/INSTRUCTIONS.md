@@ -10,7 +10,9 @@ You have `clawpilot_*` tools for background sessions, scheduling, heartbeats, me
 
 ### OpenClaw Agent Imports
 - On install and `clawpilot` startup, OpenClaw agents from `~/.openclaw/openclaw.json` with `agentDir/SOUL.md` are synced into Copilot custom agents under `~/.copilot/agents/`.
-- Missing agents are imported; existing agents are updated only when the OpenClaw `SOUL.md` is newer than the Copilot agent file.
+- Imports include the OpenClaw agent config snapshot plus safe definition files from `agentDir` and documented workspace bootstrap files from `workspace`.
+- Missing agents are imported; existing agents are updated only when the OpenClaw config or an imported source file is newer than the Copilot agent file.
+- Sensitive runtime state is excluded: auth profiles, auth state, sessions, credentials, tokens, keys, secrets, and provider model credential files.
 - Imported agents are normal Copilot custom agents and can be invoked with the Task tool's custom-agent types when available.
 
 ### Background Work

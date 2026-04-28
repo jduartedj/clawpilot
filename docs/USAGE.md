@@ -98,10 +98,15 @@ On install and on every `clawpilot` start, Clawpilot reads `~/.openclaw/openclaw
 The sync is timestamp-aware:
 
 - Missing Copilot agents are imported.
-- Existing Copilot agents are updated only when the OpenClaw `SOUL.md` is newer.
+- Existing Copilot agents are updated only when the OpenClaw config or any imported source file is newer.
 - Existing Copilot agents with the same or newer timestamp are preserved, so local Copilot edits are not overwritten.
 
-Imported agents keep the OpenClaw persona text, map supported models where possible, and include a safety note that OpenClaw instructions about spawning/invoking Copilot CLI should be ignored because the agent is already running inside Copilot CLI.
+Imported agents include the OpenClaw agent config snapshot plus safe definition files from both:
+
+- `agents.list[].agentDir` — agent-specific persona/docs/config files.
+- `agents.list[].workspace` — documented OpenClaw bootstrap files such as `AGENTS.md`, `SOUL.md`, `USER.md`, `IDENTITY.md`, `TOOLS.md`, `HEARTBEAT.md`, `BOOT.md`, `BOOTSTRAP.md`, `MEMORY.md`, and workspace skills.
+
+Sensitive runtime state is intentionally excluded: auth profiles, auth state, sessions, credentials, tokens, keys, secrets, and provider model credential files. Imported agents also include a safety note that OpenClaw instructions about spawning/invoking Copilot CLI should be ignored because the agent is already running inside Copilot CLI.
 
 Already-running Copilot CLI sessions may need `/clear` or a restart before newly imported agents appear in the available custom-agent list.
 
