@@ -87,6 +87,7 @@ Once running, just ask naturally:
 - **State isolated** in `~/.clawpilot/` — zero coupling with `~/.copilot/` internals
 - **Auto-resume** — quit mid-task and work continues in background; on return, results are handed back seamlessly
 - **Persistent session** — `clawpilot` command always resumes your "main" session
+- **Smart workspace** — auto-detects OpenClaw workspace dir, falls back to `~/clawd` or `~/`
 - **No npm dependencies** — all extensions use Node.js built-ins only
 - **Security reviewed** — prompts stored in files (not systemd units), vault uses age encryption with `0700`/`0600` permissions, tokens validated on setup
 - **Linux-first** — systemd for scheduling/daemon; macOS support planned
