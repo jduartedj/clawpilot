@@ -23,7 +23,7 @@ Clawpilot is a set of **extensions** for [GitHub Copilot CLI](https://github.com
 ## Quick Start
 
 ```bash
-# Install
+# Install (auto-installs Copilot CLI if needed)
 git clone https://github.com/jduartedj/clawpilot.git ~/.clawpilot
 cd ~/.clawpilot && ./install.sh
 
