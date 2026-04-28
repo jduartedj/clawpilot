@@ -50,11 +50,22 @@ function quoteWin(value) {
     return `"${String(value).replace(/"/g, '\\"')}"`;
 }
 
+function quotePowerShellLiteral(value) {
+    return `'${String(value).replace(/'/g, "''")}'`;
+}
+
 function buildWindowsDaemonCommand() {
-    return [
-        quoteWin(process.execPath),
-        quoteWin(DAEMON_HANDLER),
+    const command = [
+        "&",
+        quotePowerShellLiteral(process.execPath),
+        quotePowerShellLiteral(DAEMON_HANDLER),
         "--watch",
+    ].join(" ");
+    return [
+        "powershell.exe",
+        "-NoProfile",
+        "-ExecutionPolicy", "Bypass",
+        "-Command", quoteWin(command),
     ].join(" ");
 }
 

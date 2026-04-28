@@ -2,4 +2,3 @@
 setlocal
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0clawpilot.ps1" %*
 exit /b %ERRORLEVEL%
-

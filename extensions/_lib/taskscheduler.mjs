@@ -2,7 +2,7 @@ import { readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { ensureDir, sanitizeName, tailFile } from "./fs.mjs";
 import { exec } from "./exec.mjs";
-import { COPILOT_BIN, statePath } from "./platform.mjs";
+import { COPILOT_BIN, IS_WINDOWS, statePath } from "./platform.mjs";
 
 export function taskName(prefix, name) {
     return `Clawpilot-${sanitizeName(`${prefix}-${name}`)}`;
@@ -10,6 +10,27 @@ export function taskName(prefix, name) {
 
 function winCommandQuote(value) {
     return `"${String(value).replace(/"/g, '\\"')}"`;
+}
+
+async function restrictWindowsFileAccess(path) {
+    if (!IS_WINDOWS) return;
+    const account = process.env.USERDOMAIN && process.env.USERNAME
+        ? `${process.env.USERDOMAIN}\\${process.env.USERNAME}`
+        : process.env.USERNAME;
+    if (!account) {
+        throw new Error("Cannot restrict Windows file ACLs because USERNAME is not set.");
+    }
+    const result = await exec("icacls.exe", [
+        path,
+        "/inheritance:r",
+        "/grant:r",
+        `${account}:F`,
+        "*S-1-5-18:F",
+        "*S-1-5-32-544:F",
+    ]);
+    if (!result.ok) {
+        throw new Error(`Failed to restrict ACLs for ${path}: ${result.stderr || result.stdout}`);
+    }
 }
 
 function normalizeTime(value) {
@@ -122,6 +143,7 @@ if ($LogFile) {
 }
 exit $exitCode
 `);
+    await restrictWindowsFileAccess(scriptPath);
     return scriptPath;
 }
 
@@ -157,6 +179,7 @@ export async function createScheduledCopilotTask({
     const metaFile = join(stateDir, `${safe}.json`);
     await ensureDir(stateDir);
     await writeFile(promptFile, prompt, { mode: 0o600 });
+    await restrictWindowsFileAccess(promptFile);
     const scriptPath = await ensureRunnerScript();
     const scheduleArgs = parseWindowsSchedule(schedule);
     const command = buildPowerShellTaskCommand({
@@ -179,6 +202,7 @@ export async function createScheduledCopilotTask({
         logFile,
         createdAt: new Date().toISOString(),
     }, null, 2), { mode: 0o600 });
+    await restrictWindowsFileAccess(metaFile);
     return { ...result, taskName: tn, logFile };
 }
 
