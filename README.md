@@ -18,12 +18,12 @@ Clawpilot is a set of **extensions** for [GitHub Copilot CLI](https://github.com
 | **vault** | age-encrypted local secrets with rotation tracking | ✅ |
 | **fallback** | Automatic retry on model errors | ✅ |
 
-**37 tools** total. Zero external dependencies — pure Node.js built-ins + system utilities.
+**37 tools** total. Zero npm dependencies — pure Node.js built-ins + native system utilities.
 
 ## Quick Start
 
 ```bash
-# Install (auto-installs Copilot CLI if needed)
+# Linux install (auto-installs Copilot CLI if needed)
 git clone https://github.com/jduartedj/clawpilot.git ~/.clawpilot
 cd ~/.clawpilot && ./install.sh
 
@@ -31,7 +31,19 @@ cd ~/.clawpilot && ./install.sh
 clawpilot
 ```
 
-Requires **Linux with systemd**. Optional: `sudo apt install sqlite3 age` for memory-db and vault.
+Linux requires **systemd** for scheduler, heartbeat, and daemon. Optional: `sudo apt install sqlite3 age` for memory-db and vault.
+
+### Windows preview
+
+```powershell
+git clone https://github.com/jduartedj/clawpilot.git $env:LOCALAPPDATA\Clawpilot\src
+cd $env:LOCALAPPDATA\Clawpilot\src
+.\install.ps1
+
+clawpilot
+```
+
+Windows support uses Task Scheduler for `scheduler`, `heartbeat`, and daemon logon startup. State lives under `%LOCALAPPDATA%\Clawpilot`; `~\.clawpilot` is still created as a compatibility directory. Optional dependencies: `winget install SQLite.SQLite` and `winget install FiloSottile.age`.
 
 ## Usage
 
@@ -69,7 +81,7 @@ Once running, just ask naturally:
 │  channels · daemon · orchestrator       │
 │  memory-db · vault · fallback           │
 ├─────────────────────────────────────────┤
-│  Clawpilot State                        │ ← ~/.clawpilot/
+│  Clawpilot State                        │ ← ~/.clawpilot/ (Linux), %LOCALAPPDATA%\Clawpilot (Windows)
 │  spawned/ · heartbeat/ · vault/         │
 │  scheduler/ · inbox/ · memory.db        │
 └─────────────────────────────────────────┘
@@ -86,7 +98,7 @@ Once running, just ask naturally:
 - **OpenClaw agent sync** — imports OpenClaw agent config + safe `agentDir`/workspace definition files into Copilot custom agents on startup
 - **No npm dependencies** — all extensions use Node.js built-ins only
 - **Security reviewed** — prompts stored in files (not systemd units), vault uses age encryption with `0700`/`0600` permissions, tokens validated on setup
-- **Linux-first, cross-platform planned** — see the Linux refactor, Windows, and macOS plans below
+- **Cross-platform foundation** — Linux/systemd remains the stable baseline; Windows uses native Task Scheduler and PowerShell launchers
 
 ## Update
 
@@ -94,10 +106,25 @@ Once running, just ask naturally:
 cd ~/.clawpilot && git pull && ./install.sh
 ```
 
+Windows:
+
+```powershell
+cd $env:LOCALAPPDATA\Clawpilot\src
+git pull
+.\install.ps1
+```
+
 ## Uninstall
 
 ```bash
 cd ~/.clawpilot && ./uninstall.sh
+```
+
+Windows:
+
+```powershell
+cd $env:LOCALAPPDATA\Clawpilot\src
+.\uninstall.ps1
 ```
 
 ## Docs

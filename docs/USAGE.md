@@ -25,17 +25,27 @@
 
 ### Install Clawpilot
 
+Linux:
+
 ```bash
 git clone https://github.com/jduartedj/clawpilot.git ~/.clawpilot
 cd ~/.clawpilot
 ./install.sh
 ```
 
+Windows:
+
+```powershell
+git clone https://github.com/jduartedj/clawpilot.git $env:LOCALAPPDATA\Clawpilot\src
+cd $env:LOCALAPPDATA\Clawpilot\src
+.\install.ps1
+```
+
 The installer automatically:
-- Installs GitHub Copilot CLI if not found
+- Installs GitHub Copilot CLI if not found on Linux; Windows currently requires Copilot CLI to already be on PATH
 - Copies all 9 extensions to `~/.copilot/extensions/`
-- Creates state directories in `~/.clawpilot/`
-- Links the `clawpilot` launcher to `~/.local/bin/`
+- Creates state directories in `~/.clawpilot/` on Linux or `%LOCALAPPDATA%\Clawpilot` on Windows
+- Links or installs the `clawpilot` launcher (`~/.local/bin/` on Linux, `%LOCALAPPDATA%\Clawpilot\bin` on Windows)
 - Reports any missing optional dependencies (sqlite3, age)
 
 Then restart Copilot CLI or run `/clear`. All `clawpilot_*` tools become available.
@@ -44,25 +54,46 @@ Then restart Copilot CLI or run `/clear`. All `clawpilot_*` tools become availab
 
 | Tool | For | Install |
 |------|-----|---------|
-| `sqlite3` | memory-db extension | `sudo apt install sqlite3` |
-| `age` | vault extension | `sudo apt install age` |
+| `sqlite3` | memory-db extension | Linux: `sudo apt install sqlite3`; Windows: `winget install SQLite.SQLite` |
+| `age` | vault extension | Linux: `sudo apt install age`; Windows: `winget install FiloSottile.age` |
 
 ### System requirements
 
-- **Linux with systemd** — required for scheduler, heartbeat, and daemon extensions
+- **Linux with systemd** or **Windows 10/11 with Task Scheduler**
 - **Node.js 18+** — included with Copilot CLI
 
 ### Update
+
+Linux:
 
 ```bash
 cd ~/.clawpilot && git pull && ./install.sh
 ```
 
+Windows:
+
+```powershell
+cd $env:LOCALAPPDATA\Clawpilot\src
+git pull
+.\install.ps1
+```
+
 ### Uninstall
+
+Linux:
 
 ```bash
 cd ~/.clawpilot && ./uninstall.sh
 # Optionally remove state: rm -rf ~/.clawpilot
+```
+
+Windows:
+
+```powershell
+cd $env:LOCALAPPDATA\Clawpilot\src
+.\uninstall.ps1
+# Optionally remove state after backing up anything important:
+# Remove-Item -Recurse -Force $env:LOCALAPPDATA\Clawpilot
 ```
 
 ### The `clawpilot` Command
@@ -222,16 +253,16 @@ When you start a new Copilot CLI session, the spawn extension automatically chec
 
 ### How It Works
 
-1. Runs `setsid copilot -p "prompt" --allow-all --autopilot --name "spawn-{name}" --silent --no-ask-user`
-2. Output captured to `~/.clawpilot/spawned/{name}/output.log`
-3. PID and metadata stored in `~/.clawpilot/spawned/{name}/meta.json`
-4. Process runs detached — survives parent CLI exit
+1. Runs a detached `copilot -p "prompt" --allow-all --autopilot --name "spawn-{name}" --silent --no-ask-user`
+2. Output captured to the Clawpilot spawned log path (`spawned/{name}/output.log`)
+3. PID and metadata stored in `spawned/{name}/meta.json`
+4. Process runs detached — survives parent CLI exit; Windows kills process trees with `taskkill /T /F /PID`
 
 ---
 
-## ⏰ scheduler — Systemd Timers
+## ⏰ scheduler — Timers
 
-Schedule recurring Copilot CLI tasks using systemd user timers. Each run is a fresh `copilot -p` session.
+Schedule recurring Copilot CLI tasks. Linux uses systemd user timers; Windows uses Task Scheduler. Each run is a fresh `copilot -p` session.
 
 ### Tools
 
@@ -242,12 +273,12 @@ Create a scheduled task.
 | Parameter | Required | Description |
 |-----------|----------|-------------|
 | `name` | ✅ | Unique task name |
-| `schedule` | ✅ | systemd OnCalendar syntax (see below) |
+| `schedule` | ✅ | Linux: systemd OnCalendar syntax. Windows: documented compatible subset (see below). |
 | `prompt` | ✅ | Task prompt |
 | `cwd` | | Working directory (default: home) |
 | `model` | | Model override |
 
-**Schedule syntax (systemd OnCalendar):**
+**Schedule syntax:**
 
 | Pattern | Meaning |
 |---------|---------|
@@ -259,6 +290,8 @@ Create a scheduled task.
 | `Mon *-*-* 09:00:00` | Every Monday at 9:00 AM |
 | `*-*-01 00:00:00` | First of every month |
 | `Mon..Fri *-*-* 08:00:00` | Weekdays at 8:00 AM |
+
+Windows currently supports: `hourly`, `daily`, `weekly`, `*-*-* HH:MM[:SS]`, `Mon *-*-* HH:MM[:SS]`, `*-*-* */N:00:00`, `*-*-* *:0/N:00`, and `every N minutes/hours`. Systemd-only patterns such as monthly dates or weekday ranges fail clearly instead of being approximated.
 
 **Example:**
 ```
@@ -279,7 +312,7 @@ They are not duplicated into systemd timers, so Clawpilot will not double-run ex
 
 #### `clawpilot_schedule_cancel`
 
-Stop, disable, and remove a scheduled task and its systemd units.
+Stop, disable, and remove a scheduled task and its native scheduler definition.
 
 Imported `openclaw:<job-id>` refs are read-only in Clawpilot. Disable or delete those jobs with OpenClaw's cron tools.
 
@@ -295,11 +328,11 @@ Manually trigger a scheduled task immediately.
 |-----------|----------|-------------|
 | `name` | ✅ | Task name to trigger |
 
-For imported OpenClaw jobs, pass `openclaw:<job-id>` or `openclaw:<job-name>`. Clawpilot starts a one-shot `systemd-run --user` unit that runs the original OpenClaw cron prompt through `copilot -p`; it does not modify the OpenClaw cron definition.
+For imported OpenClaw jobs, pass `openclaw:<job-id>` or `openclaw:<job-name>`. Clawpilot runs the original OpenClaw cron prompt through `copilot -p`; it does not modify the OpenClaw cron definition.
 
 #### `clawpilot_schedule_logs`
 
-View journald logs from a scheduled task's recent runs.
+View logs from a scheduled task's recent runs.
 
 | Parameter | Required | Description |
 |-----------|----------|-------------|
@@ -310,11 +343,10 @@ For imported OpenClaw jobs, pass `openclaw:<job-id>` to tail `~/.openclaw/cron/r
 
 ### How It Works
 
-1. Prompt written to `~/.clawpilot/scheduler/{name}.prompt` (not inline in unit)
-2. Creates `~/.config/systemd/user/clawpilot-{name}.service` + `.timer`
-3. Service runs `/bin/bash -c 'exec copilot -p "$(cat promptfile)" --allow-all ...'`
-4. `systemctl --user enable --now` activates the timer
-5. Logs go to journald (queryable via `journalctl --user`)
+1. Prompt written to Clawpilot state (`scheduler/{name}.prompt`) instead of being embedded inline
+2. Linux creates `~/.config/systemd/user/clawpilot-{name}.service` + `.timer`
+3. Windows creates a `Clawpilot-sched-{name}` Task Scheduler task that calls a generated PowerShell runner
+4. Linux logs go to journald; Windows logs go to `scheduler/{name}.log`
 6. OpenClaw cron metadata is read from `~/.openclaw/cron/jobs.json` and `jobs-state.json`; logs are read from `~/.openclaw/cron/runs/`
 
 ---
@@ -332,7 +364,7 @@ Add a proactive check.
 | Parameter | Required | Description |
 |-----------|----------|-------------|
 | `name` | ✅ | Unique check name (e.g., `email`, `services`) |
-| `schedule` | ✅ | systemd OnCalendar schedule |
+| `schedule` | ✅ | Linux systemd OnCalendar schedule or Windows supported scheduler subset |
 | `prompt` | ✅ | What to check — runs as a background Copilot session |
 
 **Example:**
@@ -342,7 +374,7 @@ Add a proactive check.
 
 #### `clawpilot_heartbeat_remove`
 
-Remove a heartbeat check and its systemd timer.
+Remove a heartbeat check and its native timer/task.
 
 | Parameter | Required | Description |
 |-----------|----------|-------------|
@@ -378,8 +410,8 @@ On every session start, the heartbeat extension injects pending results as conte
 
 ### How It Works
 
-1. Each heartbeat is a systemd timer that runs `copilot -p` with instructions to write a JSON result
-2. Results written to `~/.clawpilot/heartbeat/results/{name}-{timestamp}.json`
+1. Each heartbeat is a systemd timer on Linux or Task Scheduler task on Windows that runs `copilot -p` with instructions to write a JSON result
+2. Results written to the Clawpilot heartbeat results directory (`~/.clawpilot/...` on Linux, `%LOCALAPPDATA%\Clawpilot\...` on Windows)
 3. On session start, pending results are read and injected as `additionalContext`
 4. Urgent items (`"urgent": true`) are highlighted with 🔴
 
@@ -480,16 +512,18 @@ Remove a configured channel.
 
 ## 🤖 daemon — Always-On Service
 
-A systemd `.path` unit that watches an inbox directory. When a JSON file appears, it spawns a Copilot CLI session to handle it.
+A native daemon watcher for the inbox directory. Linux uses a systemd `.path` unit; Windows uses a Task Scheduler logon task running the shared Node watcher loop. When a JSON file appears, it spawns a Copilot CLI session to handle it.
 
 ### Tools
 
 #### `clawpilot_daemon_setup`
 
-Install the systemd path watcher and handler script. Creates:
+Install the native watcher and handler script. Linux creates:
 - `~/.config/systemd/user/clawpilot-daemon.path` (watches inbox)
 - `~/.config/systemd/user/clawpilot-daemon.service` (handler)
 - shared Node daemon handler under `~/.copilot/extensions/_lib/`
+
+Windows creates a `Clawpilot-daemon` logon task that runs the same shared Node daemon handler with `--watch`.
 
 #### `clawpilot_daemon_status`
 
@@ -519,19 +553,27 @@ Stop and disable the daemon.
 
 ### How It Works
 
-1. `systemd .path` unit watches `~/.clawpilot/inbox/` for new `.json` files
-2. When a file appears, the handler script runs
+1. Native watcher monitors the Clawpilot inbox for new `.json` files
+2. Handler atomically moves each file to `processing/` to avoid duplicate `fs.watch` events
 3. Handler reads `{prompt, model?, cwd?}` from the JSON file
-4. Spawns `copilot -p` via `setsid` for each message
-5. Moves processed files to `~/.clawpilot/processed/`
-6. Logs go to `~/.clawpilot/logs/`
+4. Spawns a detached `copilot -p` session for each message
+5. Moves processed files to `processed/`
+6. Spawned session logs go to `logs/`
 
 ### Manual Usage (without Copilot CLI)
 
 You can also queue tasks by writing JSON files directly:
 
+Linux:
+
 ```bash
 echo '{"prompt":"Check disk space and report"}' > ~/.clawpilot/inbox/check-disk.json
+```
+
+Windows PowerShell:
+
+```powershell
+'{"prompt":"Check disk space and report"}' | Set-Content -Encoding utf8 $env:LOCALAPPDATA\Clawpilot\inbox\check-disk.json
 ```
 
 ---
@@ -733,7 +775,7 @@ Show current retry configuration and counter.
 
 ## State & Files
 
-All Clawpilot state lives in `~/.clawpilot/` — completely isolated from `~/.copilot/`.
+Clawpilot state is isolated from `~/.copilot/`. Linux stores state in `~/.clawpilot/`; Windows stores state in `%LOCALAPPDATA%\Clawpilot` and also creates `~\.clawpilot` as a compatibility directory.
 
 ```
 ~/.clawpilot/
@@ -764,7 +806,7 @@ All Clawpilot state lives in `~/.clawpilot/` — completely isolated from `~/.co
 └── scripts/              # Helper scripts, including OpenClaw agent sync
 ```
 
-### Systemd Units (created by scheduler/heartbeat/daemon)
+### Systemd Units (Linux scheduler/heartbeat/daemon)
 
 ```
 ~/.config/systemd/user/
@@ -776,11 +818,22 @@ All Clawpilot state lives in `~/.clawpilot/` — completely isolated from `~/.co
 └── clawpilot-daemon.service    # Daemon handler
 ```
 
+### Windows Scheduled Tasks
+
+```text
+Task Scheduler Library
+├── Clawpilot-sched-{name}  # Scheduler task
+├── Clawpilot-hb-{name}     # Heartbeat task
+└── Clawpilot-daemon        # Logon inbox watcher
+```
+
 ---
 
 ## Troubleshooting
 
 ### Extensions not loading
+
+Linux:
 
 ```bash
 # Re-run install (copies extension files)
@@ -793,7 +846,18 @@ copilot  # or /clear in existing session
 # Inside Copilot CLI, the agent can use extensions_manage(operation: "list")
 ```
 
+Windows:
+
+```powershell
+cd $env:LOCALAPPDATA\Clawpilot\src
+.\install.ps1
+copilot
+# In an existing Copilot CLI session, run /clear or restart the process.
+```
+
 ### Scheduler/heartbeat timers not running
+
+Linux:
 
 ```bash
 # List all Clawpilot timers
@@ -809,7 +873,18 @@ journalctl --user -u clawpilot-{name}.service --no-pager -n 50
 systemctl --user daemon-reload
 ```
 
+Windows:
+
+```powershell
+schtasks /Query /FO LIST /V | Select-String Clawpilot
+schtasks /Query /TN Clawpilot-sched-{name} /FO LIST /V
+schtasks /Run /TN Clawpilot-sched-{name}
+Get-Content $env:LOCALAPPDATA\Clawpilot\scheduler\{name}.log -Tail 50
+```
+
 ### Daemon not picking up messages
+
+Linux:
 
 ```bash
 # Check daemon status
@@ -823,6 +898,22 @@ journalctl --user -u clawpilot-daemon.service --no-pager -n 100
 
 # View daemon logs
 journalctl --user -u clawpilot-daemon.service --no-pager -n 50
+```
+
+Windows:
+
+```powershell
+schtasks /Query /TN Clawpilot-daemon /FO LIST /V
+schtasks /Run /TN Clawpilot-daemon
+Get-ChildItem $env:LOCALAPPDATA\Clawpilot\inbox
+Get-ChildItem $env:LOCALAPPDATA\Clawpilot\processed
+Get-Content $env:LOCALAPPDATA\Clawpilot\logs\daemon-{name}.log -Tail 50
+```
+
+If PowerShell blocks scripts, run the installed `clawpilot.cmd` shim or start PowerShell with:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
 ```
 
 ### Vault errors

@@ -3,9 +3,10 @@
 import { joinSession } from "@github/copilot-sdk/extension";
 import { writeFile, unlink, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { HOME, COPILOT_BIN, statePath } from "../_lib/platform.mjs";
+import { HOME, COPILOT_BIN, IS_WINDOWS, statePath } from "../_lib/platform.mjs";
 import { ensureDir, readJsonFile, sanitizeName } from "../_lib/fs.mjs";
 import { daemonReload, enableNow, journalLogs, listTimers, removeUserUnit, runTransientUnit, startUnit, statusUnit, stopDisable, unitName as systemdUnitName, writeUserUnit } from "../_lib/systemd.mjs";
+import { createScheduledCopilotTask, deleteTask, queryAllTasks, queryTask, readTaskMeta, runTask, taskLog, taskName as windowsTaskName } from "../_lib/taskscheduler.mjs";
 
 const STATE_DIR = statePath("scheduler");
 const OPENCLAW_CRON_DIR = join(HOME, ".openclaw", "cron");
@@ -16,6 +17,10 @@ const OPENCLAW_WORKSPACE = join(HOME, "clawd");
 
 function unitName(name) {
     return systemdUnitName("clawpilot", name);
+}
+
+function scheduledTaskName(name) {
+    return windowsTaskName("sched", name);
 }
 
 function shellSingleQuote(value) {
@@ -117,6 +122,18 @@ async function runOpenClawJob(job) {
     const cwd = OPENCLAW_WORKSPACE;
     await writeFile(promptFile, buildOpenClawPrompt(job), { mode: 0o600 });
 
+    if (IS_WINDOWS) {
+        const { spawnDetachedCopilot } = await import("../_lib/spawn-backend.mjs");
+        const logPath = join(STATE_DIR, `${slug}.openclaw.log`);
+        const child = spawnDetachedCopilot({
+            prompt: buildOpenClawPrompt(job),
+            name: `openclaw-cron-${slug}`,
+            cwd,
+            logPath,
+        });
+        return `Triggered imported OpenClaw cron '${job.name || job.id}'.\nPID: ${child.pid}\nLog: ${logPath}`;
+    }
+
     const command = `exec ${COPILOT_BIN} -p "$(cat ${shellSingleQuote(promptFile)})" --allow-all --autopilot --silent --no-ask-user --name ${shellSingleQuote(`openclaw-cron-${slug}`)}`;
     const result = await runTransientUnit({ unit, cwd, command });
     if (!result.ok) {
@@ -163,15 +180,16 @@ const session = await joinSession({
             name: "clawpilot_schedule",
             description:
                 "Schedule a recurring Copilot CLI task using systemd user timers. " +
+                "On Windows, uses Task Scheduler for the supported schedule subset. " +
                 "The task runs `copilot -p` on the specified schedule. " +
-                "Schedule uses systemd OnCalendar syntax: 'hourly', 'daily', '*-*-* 08:00:00', 'Mon *-*-* 09:00:00', etc.",
+                "Schedule uses systemd OnCalendar syntax on Linux and compatible subset syntax on Windows: 'hourly', 'daily', '*-*-* 08:00:00', 'Mon *-*-* 09:00:00', etc.",
             parameters: {
                 type: "object",
                 properties: {
                     name: { type: "string", description: "Unique name for this scheduled task" },
                     schedule: {
                         type: "string",
-                        description: "systemd OnCalendar schedule (e.g., 'hourly', 'daily', '*-*-* 08:00:00', '*-*-* */4:00:00')",
+                        description: "Schedule (Linux systemd OnCalendar; Windows supported subset: hourly, daily, weekly, '*-*-* HH:MM[:SS]', 'Mon *-*-* HH:MM[:SS]', every N minutes/hours)",
                     },
                     prompt: { type: "string", description: "The prompt/task for the scheduled Copilot session" },
                     cwd: { type: "string", description: "Working directory (default: home directory)" },
@@ -193,6 +211,28 @@ const session = await joinSession({
                 // Write prompt to a separate file (not inline in unit)
                 const promptFile = join(STATE_DIR, `${name}.prompt`);
                 await writeFile(promptFile, args.prompt, { mode: 0o600 });
+
+                if (IS_WINDOWS) {
+                    let created;
+                    try {
+                        created = await createScheduledCopilotTask({
+                            name,
+                            prefix: "sched",
+                            schedule: args.schedule,
+                            prompt: args.prompt,
+                            cwd,
+                            model: args.model,
+                            stateDir: STATE_DIR,
+                            copilotName: `sched-${name}`,
+                        });
+                    } catch (err) {
+                        return { textResultForLlm: err.message, resultType: "failure" };
+                    }
+                    if (!created.ok) {
+                        return { textResultForLlm: `Failed to create Windows scheduled task: ${created.stderr}`, resultType: "failure" };
+                    }
+                    return `Scheduled '${name}' (${args.schedule})\nTask: ${created.taskName}\nLog: ${created.logFile}\n${created.stdout}`;
+                }
 
                 // Write service unit
                 await writeUserUnit(`${unit}.service`, buildServiceUnit(name, cwd, args.model));
@@ -232,6 +272,14 @@ const session = await joinSession({
             description: "List all scheduled Clawpilot tasks with their next run time, including imported OpenClaw crons if present.",
             parameters: { type: "object", properties: {} },
             handler: async () => {
+                if (IS_WINDOWS) {
+                    const result = await queryAllTasks();
+                    const local = result.ok
+                        ? (result.stdout.split(/\r?\n\r?\n/).filter((block) => block.includes("TaskName:") && block.includes("Clawpilot-sched-")).join("\n\n") || "No native Clawpilot scheduled tasks.")
+                        : `Failed to query Windows scheduled tasks: ${result.stderr}`;
+                    const { jobs, states } = await readOpenClawCrons();
+                    return `${local}\n\n${formatOpenClawCronList(jobs, states)}`;
+                }
                 const result = await listTimers("clawpilot-*");
                 const local = (!result.stdout || result.stdout.includes("0 timers"))
                     ? "No native Clawpilot scheduled tasks."
@@ -262,6 +310,18 @@ const session = await joinSession({
 
                 const name = args.name.replace(/[^a-zA-Z0-9_-]/g, "-");
                 const unit = unitName(name);
+
+                if (IS_WINDOWS) {
+                    const result = await deleteTask(scheduledTaskName(name));
+                    if (!result.ok) {
+                        return { textResultForLlm: `Failed to delete Windows scheduled task: ${result.stderr}`, resultType: "failure" };
+                    }
+                    const promptPath = join(STATE_DIR, `${name}.prompt`);
+                    const metaPath = join(STATE_DIR, `${name}.json`);
+                    try { await unlink(promptPath); } catch { /* ignore */ }
+                    try { await unlink(metaPath); } catch { /* ignore */ }
+                    return `Cancelled and removed scheduled task '${name}'.`;
+                }
 
                 await stopDisable(`${unit}.timer`);
 
@@ -295,6 +355,13 @@ const session = await joinSession({
 
                 const name = args.name.replace(/[^a-zA-Z0-9_-]/g, "-");
                 const unit = unitName(name);
+                if (IS_WINDOWS) {
+                    const result = await runTask(scheduledTaskName(name));
+                    if (!result.ok) {
+                        return { textResultForLlm: `Failed to start Windows scheduled task: ${result.stderr}`, resultType: "failure" };
+                    }
+                    return `Triggered '${name}' — check logs with clawpilot_schedule_logs.`;
+                }
                 const result = await startUnit(`${unit}.service`);
 
                 if (!result.ok) {
@@ -330,6 +397,12 @@ const session = await joinSession({
 
                 const name = args.name.replace(/[^a-zA-Z0-9_-]/g, "-");
                 const unit = unitName(name);
+                if (IS_WINDOWS) {
+                    const meta = await readTaskMeta(STATE_DIR, name);
+                    const taskStatus = await queryTask(meta?.taskName || scheduledTaskName(name));
+                    const logs = await taskLog(STATE_DIR, name, args.lines || 100);
+                    return `${taskStatus.stdout || taskStatus.stderr || "(task not found)"}\n\n--- log ---\n${logs}`;
+                }
                 const result = await journalLogs(`${unit}.service`, args.lines || 100);
                 return result.stdout || "(no logs yet)";
             },

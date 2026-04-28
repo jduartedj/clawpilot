@@ -4,8 +4,9 @@ import { joinSession } from "@github/copilot-sdk/extension";
 import { readFile, writeFile, readdir, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { ensureDir, sanitizeName } from "../_lib/fs.mjs";
-import { HOME, statePath } from "../_lib/platform.mjs";
+import { HOME, IS_WINDOWS, statePath } from "../_lib/platform.mjs";
 import { activeStatus, daemonReload, enableNow, removeUserUnit, stopDisable, unitName as systemdUnitName, writeUserUnit } from "../_lib/systemd.mjs";
+import { createScheduledCopilotTask, deleteTask, queryTask, taskName as windowsTaskName } from "../_lib/taskscheduler.mjs";
 
 const HEARTBEAT_DIR = statePath("heartbeat");
 const CONFIG_FILE = join(HEARTBEAT_DIR, "config.json");
@@ -40,6 +41,10 @@ async function getPendingResults() {
 
 function unitName(name) {
     return systemdUnitName("clawpilot-hb", name);
+}
+
+function scheduledTaskName(name) {
+    return windowsTaskName("hb", name);
 }
 
 // Heartbeat scheduled tasks write their results to a file.
@@ -91,12 +96,13 @@ const session = await joinSession({
             name: "clawpilot_heartbeat_add",
             description:
                 "Add a proactive heartbeat check. Runs on a schedule and reports results when you start a new session. " +
+                "Uses systemd timers on Linux and Task Scheduler on Windows. " +
                 "Examples: check email hourly, check service health every 4 hours, daily code review.",
             parameters: {
                 type: "object",
                 properties: {
                     name: { type: "string", description: "Unique name for this heartbeat check" },
-                    schedule: { type: "string", description: "systemd OnCalendar schedule (e.g., 'hourly', '*-*-* */4:00:00')" },
+                    schedule: { type: "string", description: "Schedule (Linux systemd OnCalendar; Windows supported subset: hourly, daily, weekly, every N hours/minutes)" },
                     prompt: { type: "string", description: "What to check — this prompt runs in a background Copilot session" },
                 },
                 required: ["name", "schedule", "prompt"],
@@ -121,6 +127,35 @@ const session = await joinSession({
                 // Write prompt to file (not inline in unit)
                 const promptFile = join(HEARTBEAT_DIR, `${name}.prompt`);
                 await writeFile(promptFile, fullPrompt, { mode: 0o600 });
+
+                if (IS_WINDOWS) {
+                    let created;
+                    try {
+                        created = await createScheduledCopilotTask({
+                            name,
+                            prefix: "hb",
+                            schedule: args.schedule,
+                            prompt: fullPrompt,
+                            cwd: HOME,
+                            stateDir: HEARTBEAT_DIR,
+                            copilotName: `hb-${name}`,
+                        });
+                    } catch (err) {
+                        return { textResultForLlm: err.message, resultType: "failure" };
+                    }
+                    if (!created.ok) {
+                        return { textResultForLlm: `Failed to create Windows heartbeat task: ${created.stderr}`, resultType: "failure" };
+                    }
+
+                    config.checks.push({
+                        name,
+                        schedule: args.schedule,
+                        prompt: args.prompt,
+                        createdAt: new Date().toISOString(),
+                    });
+                    await saveConfig(config);
+                    return `Heartbeat '${name}' added (${args.schedule}). Windows task: ${created.taskName}. Results will appear on session start.`;
+                }
 
                 await writeUserUnit(`${unit}.service`, buildServiceUnit(name, fullPrompt));
                 await writeUserUnit(`${unit}.timer`, buildTimerUnit(name, args.schedule));
@@ -153,6 +188,21 @@ const session = await joinSession({
                 const name = sanitizeName(args.name);
                 const unit = unitName(name);
 
+                if (IS_WINDOWS) {
+                    const result = await deleteTask(scheduledTaskName(name));
+                    if (!result.ok) {
+                        return { textResultForLlm: `Failed to delete Windows heartbeat task: ${result.stderr}`, resultType: "failure" };
+                    }
+                    try { await unlink(join(HEARTBEAT_DIR, `${name}.prompt`)); } catch { /* ok */ }
+                    try { await unlink(join(HEARTBEAT_DIR, `${name}.json`)); } catch { /* ok */ }
+
+                    const config = await loadConfig();
+                    config.checks = config.checks.filter((c) => c.name !== name);
+                    await saveConfig(config);
+
+                    return `Heartbeat '${name}' removed.`;
+                }
+
                 await stopDisable(`${unit}.timer`);
 
                 await removeUserUnit(`${unit}.service`);
@@ -181,9 +231,16 @@ const session = await joinSession({
 
                 let output = "## Heartbeat Checks\n";
                 for (const c of config.checks) {
-                    const unit = unitName(c.name);
-                    const status = await activeStatus(`${unit}.timer`);
-                    output += `• ${c.name} | ${c.schedule} | ${status.stdout || "unknown"}\n`;
+                    let statusText;
+                    if (IS_WINDOWS) {
+                        const result = await queryTask(scheduledTaskName(c.name));
+                        statusText = result.ok ? "installed" : "not installed";
+                    } else {
+                        const unit = unitName(c.name);
+                        const result = await activeStatus(`${unit}.timer`);
+                        statusText = result.stdout || "unknown";
+                    }
+                    output += `• ${c.name} | ${c.schedule} | ${statusText}\n`;
                 }
 
                 if (pending.length > 0) {

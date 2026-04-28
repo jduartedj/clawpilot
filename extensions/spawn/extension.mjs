@@ -3,7 +3,7 @@
 // Includes auto-resume: detects interrupted tasks on exit and re-spawns them.
 import { joinSession } from "@github/copilot-sdk/extension";
 import { readFile, writeFile, readdir, rm } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { ensureDir, sanitizeName, tailFile, writeJsonFile } from "../_lib/fs.mjs";
 import { HOME, statePath } from "../_lib/platform.mjs";
 import { isProcessRunning, killProcessTree, spawnDetachedCopilot } from "../_lib/spawn-backend.mjs";
@@ -221,7 +221,8 @@ const session = await joinSession({
                 for (const name of entries) {
                     // Verify path stays inside SPAWNED_DIR
                     const target = resolve(SPAWNED_DIR, name);
-                    if (!target.startsWith(resolve(SPAWNED_DIR) + "/")) continue;
+                    const rel = relative(resolve(SPAWNED_DIR), target);
+                    if (rel.startsWith("..") || rel === "" || resolve(rel) === rel) continue;
 
                     const meta = await getMeta(name);
                     if (!meta) continue;
