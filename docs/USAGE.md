@@ -78,14 +78,28 @@ If you quit the CLI while the agent is mid-task, Clawpilot automatically:
 1. Detects the agent was still working (tools in flight or response not yet complete)
 2. Captures your last prompt
 3. Spawns a background `copilot -p` session to continue the interrupted work
-4. On your next session start, reports what happened:
 
+**When you come back,** one of two things happens:
+
+**If the background session finished:**
+The output is injected into your new session as context. The agent reviews it and tells you what was accomplished:
 ```
-[Clawpilot] Your last session was interrupted mid-task.
-The interrupted work was auto-spawned as a background session.
-• Session: resume-1714265123456
-• Original prompt: Refactor the entire auth module...
-Use clawpilot_spawn_read("resume-1714265123456") to check progress.
+[Clawpilot Auto-Resume] Your last session was interrupted.
+A background session completed the task while you were away.
+
+Original task: Refactor the entire auth module
+Background session output: ...
+```
+
+**If the background session is still running:**
+It's stopped and handed back to you with its partial output. The agent picks up where it left off, interactively:
+```
+[Clawpilot Auto-Resume] Your last session was interrupted.
+A background session was working on it but you're back now —
+it has been stopped and handed back to you.
+
+Original task: Refactor the entire auth module
+Progress from background session: ...
 ```
 
 This is a **best-effort safety net** — the spawned session gets the original prompt but not the full conversation context. For guaranteed results, use `clawpilot_spawn` explicitly.

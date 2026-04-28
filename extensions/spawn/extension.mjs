@@ -312,16 +312,56 @@ const session = await joinSession({
             // Check for interrupted task from last session
             try {
                 const interrupted = JSON.parse(await readFile(RESUME_FILE, "utf-8"));
-                if (interrupted && interrupted.prompt) {
-                    // Clear the file
+                if (interrupted && interrupted.prompt && interrupted.spawnName) {
                     await rm(RESUME_FILE, { force: true });
-                    return {
-                        additionalContext:
-                            `[Clawpilot] Your last session was interrupted mid-task. The interrupted work was auto-spawned as a background session.\n` +
-                            `• Session: ${interrupted.spawnName}\n` +
-                            `• Original prompt: ${interrupted.prompt.slice(0, 200)}\n` +
-                            `Use clawpilot_spawn_read("${interrupted.spawnName}") to check progress.`,
-                    };
+
+                    const meta = await getMeta(interrupted.spawnName);
+                    if (!meta) return;
+
+                    // Check if the auto-resumed session is still running
+                    const stillRunning = meta.status === "running" && isProcessRunning(meta.pid);
+
+                    if (stillRunning) {
+                        // Kill it — we'll continue interactively
+                        try { process.kill(-meta.pid, "SIGTERM"); } catch {
+                            try { process.kill(meta.pid, "SIGTERM"); } catch { /* ok */ }
+                        }
+                        meta.status = "handed-back";
+                        meta.endedAt = new Date().toISOString();
+                        await saveMeta(interrupted.spawnName, meta);
+
+                        // Read whatever output it produced so far
+                        const partialOutput = await tailFile(
+                            join(SPAWNED_DIR, interrupted.spawnName, "output.log"), 100
+                        );
+
+                        return {
+                            additionalContext:
+                                `[Clawpilot Auto-Resume] Your last session was interrupted. A background session was working on it but you're back now — it has been stopped and handed back to you.\n\n` +
+                                `**Original task:** ${interrupted.prompt}\n\n` +
+                                `**Progress from background session (partial output):**\n${partialOutput}\n\n` +
+                                `Continue this task from where the background session left off. The user is back and available for interaction.`,
+                        };
+                    } else {
+                        // Already finished — show the full output
+                        if (meta.status === "running") {
+                            meta.status = "completed";
+                            meta.endedAt = new Date().toISOString();
+                            await saveMeta(interrupted.spawnName, meta);
+                        }
+
+                        const output = await tailFile(
+                            join(SPAWNED_DIR, interrupted.spawnName, "output.log"), 150
+                        );
+
+                        return {
+                            additionalContext:
+                                `[Clawpilot Auto-Resume] Your last session was interrupted. A background session completed the task while you were away.\n\n` +
+                                `**Original task:** ${interrupted.prompt}\n\n` +
+                                `**Background session output:**\n${output}\n\n` +
+                                `Review the output above. The task was completed autonomously. Let the user know what was accomplished.`,
+                        };
+                    }
                 }
             } catch { /* no interrupted file */ }
         },
