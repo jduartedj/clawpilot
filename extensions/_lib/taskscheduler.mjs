@@ -45,6 +45,11 @@ async function restrictWindowsFileAccess(path) {
     }
 }
 
+function shouldCreateTaskAsSystem() {
+    const username = process.env.USERNAME || "";
+    return username.toUpperCase() === "SYSTEM" || username.endsWith("$");
+}
+
 function normalizeTime(value) {
     const match = String(value || "").match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
     if (!match) return null;
@@ -229,7 +234,8 @@ export async function createScheduledCopilotTask({
         logFile,
     });
     const command = buildPowerShellTaskCommand({ scriptPath: wrapperFile });
-    const result = await exec("schtasks.exe", ["/Create", "/F", "/TN", tn, "/TR", command, ...scheduleArgs]);
+    const runAsArgs = shouldCreateTaskAsSystem() ? ["/RU", "SYSTEM"] : [];
+    const result = await exec("schtasks.exe", ["/Create", "/F", "/TN", tn, "/TR", command, ...scheduleArgs, ...runAsArgs]);
     if (!result.ok) return { ...result, taskName: tn };
     await writeFile(metaFile, JSON.stringify({
         name: safe,
@@ -279,6 +285,7 @@ export async function readTaskMeta(stateDir, name) {
 }
 
 export async function createOnLogonTask({ name, command }) {
-    const result = await exec("schtasks.exe", ["/Create", "/F", "/TN", name, "/SC", "ONLOGON", "/TR", command]);
+    const runAsArgs = shouldCreateTaskAsSystem() ? ["/RU", "SYSTEM"] : [];
+    const result = await exec("schtasks.exe", ["/Create", "/F", "/TN", name, "/SC", "ONLOGON", "/TR", command, ...runAsArgs]);
     return { ...result, taskName: name };
 }
