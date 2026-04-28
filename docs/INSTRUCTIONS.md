@@ -15,6 +15,7 @@ You have `clawpilot_*` tools for background sessions, scheduling, heartbeats, me
 - `clawpilot_spawn_kill(name)` — stop a running session
 - `clawpilot_spawn_clean(name?)` — remove finished sessions
 - Completed sessions are reported automatically on session start
+- **Auto-resume:** if the user quits mid-task, the interrupted work is auto-spawned in the background. On return, the output is injected as context — if the background session finished, the agent reports results; if still running, it's stopped and the agent continues interactively.
 
 ### Scheduling
 - `clawpilot_schedule(name, schedule, prompt, cwd?, model?)` — create recurring tasks

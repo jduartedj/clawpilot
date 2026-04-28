@@ -60,7 +60,7 @@ cd ~/.clawpilot && ./uninstall.sh
 
 ## ⚠️ Important: Spawn Long Tasks
 
-**If you quit the CLI, any in-progress direct work dies and is NOT automatically resumed.** Copilot CLI's `/resume` restores conversation history but does not re-execute interrupted tasks.
+**If you quit the CLI, any in-progress direct work stops.** However, Clawpilot's auto-resume safety net detects this and spawns a background session to continue the work (see below). For guaranteed background execution, use `clawpilot_spawn` explicitly:
 
 **Rule of thumb:** If a task might take more than a few minutes, always use `clawpilot_spawn` instead of asking directly:
 

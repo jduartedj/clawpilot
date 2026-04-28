@@ -87,6 +87,7 @@ cd ~/.clawpilot
 - State lives in `~/.clawpilot/`, not `~/.copilot/` (no coupling)
 - All tool names prefixed with `clawpilot_` to avoid collisions
 - Extensions use Node.js built-ins only (no npm dependencies)
+- **Auto-resume:** quit mid-task and the interrupted work continues in the background — on return, results are handed back seamlessly
 - Linux-first (systemd for scheduling), macOS support planned
 
 ## Usage
