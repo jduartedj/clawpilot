@@ -1,5 +1,6 @@
 // Clawpilot CLI — spawn extension
 // Launch and manage parallel background Copilot CLI sessions.
+// Includes auto-resume: detects interrupted tasks on exit and re-spawns them.
 import { joinSession } from "@github/copilot-sdk/extension";
 import { execFile, spawn as nodeSpawn } from "node:child_process";
 import { mkdir, readFile, writeFile, readdir, stat, rm } from "node:fs/promises";
@@ -7,7 +8,13 @@ import { join, resolve } from "node:path";
 import { homedir } from "node:os";
 
 const SPAWNED_DIR = join(homedir(), ".clawpilot", "spawned");
+const RESUME_FILE = join(homedir(), ".clawpilot", "interrupted.json");
 const COPILOT_BIN = "copilot";
+
+// Track the session's last user message and whether the agent was mid-task
+let lastUserPrompt = null;
+let lastAssistantDone = true; // true = idle, false = agent is working
+let toolsInFlight = 0;
 
 async function ensureDir(dir) {
     await mkdir(dir, { recursive: true });
@@ -301,6 +308,100 @@ const session = await joinSession({
                     additionalContext: `[Clawpilot] ${completed.length} background session(s) finished since last check:\n${completed.join("\n")}\nUse clawpilot_spawn_read to see their output, or clawpilot_spawn_clean to remove them.`,
                 };
             }
+
+            // Check for interrupted task from last session
+            try {
+                const interrupted = JSON.parse(await readFile(RESUME_FILE, "utf-8"));
+                if (interrupted && interrupted.prompt) {
+                    // Clear the file
+                    await rm(RESUME_FILE, { force: true });
+                    return {
+                        additionalContext:
+                            `[Clawpilot] Your last session was interrupted mid-task. The interrupted work was auto-spawned as a background session.\n` +
+                            `• Session: ${interrupted.spawnName}\n` +
+                            `• Original prompt: ${interrupted.prompt.slice(0, 200)}\n` +
+                            `Use clawpilot_spawn_read("${interrupted.spawnName}") to check progress.`,
+                    };
+                }
+            } catch { /* no interrupted file */ }
+        },
+        onSessionEnd: async (input) => {
+            // Only act on user_exit when the agent was mid-task
+            if (input.reason !== "user_exit") return;
+            if (lastAssistantDone && toolsInFlight === 0) return;
+            if (!lastUserPrompt) return;
+
+            // The user quit while the agent was working — auto-spawn to continue
+            const name = `resume-${Date.now()}`;
+            const resumePrompt =
+                `CONTEXT: This task was interrupted when the user exited the CLI mid-execution.\n` +
+                `ORIGINAL TASK: ${lastUserPrompt}\n\n` +
+                `Continue and complete this task. Work autonomously to finish what was started.`;
+
+            try {
+                await ensureDir(SPAWNED_DIR);
+                const sessionDir = join(SPAWNED_DIR, name);
+                await ensureDir(sessionDir);
+                const logPath = join(sessionDir, "output.log");
+
+                const { openSync, closeSync } = await import("node:fs");
+                const logFd = openSync(logPath, "w");
+
+                const child = nodeSpawn("setsid", [COPILOT_BIN,
+                    "-p", resumePrompt,
+                    "--allow-all", "--autopilot", "--silent", "--no-ask-user",
+                    "--name", `spawn-${name}`,
+                ], {
+                    cwd: input.cwd || process.cwd(),
+                    stdio: ["ignore", logFd, logFd],
+                    detached: true,
+                    env: { ...process.env },
+                });
+                child.unref();
+                closeSync(logFd);
+
+                await saveMeta(name, {
+                    pid: child.pid,
+                    name,
+                    prompt: resumePrompt,
+                    model: "default",
+                    cwd: input.cwd || process.cwd(),
+                    startedAt: new Date().toISOString(),
+                    status: "running",
+                    autoResumed: true,
+                });
+
+                // Write marker for next session start
+                await writeFile(RESUME_FILE, JSON.stringify({
+                    prompt: lastUserPrompt,
+                    spawnName: name,
+                    resumedAt: new Date().toISOString(),
+                }));
+            } catch { /* best effort — don't crash the exit */ }
         },
     },
+});
+
+// Track user messages and agent activity to detect mid-task exits
+session.on("user.message", (event) => {
+    lastUserPrompt = event.data?.content || null;
+    lastAssistantDone = false;
+});
+
+session.on("assistant.message", () => {
+    lastAssistantDone = true;
+});
+
+session.on("session.idle", () => {
+    lastAssistantDone = true;
+    toolsInFlight = 0;
+});
+
+session.on("tool.execution_start", () => {
+    toolsInFlight++;
+    lastAssistantDone = false;
+});
+
+session.on("tool.execution_complete", () => {
+    toolsInFlight = Math.max(0, toolsInFlight - 1);
 });

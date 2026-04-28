@@ -72,9 +72,23 @@ cd ~/.clawpilot && ./uninstall.sh
 > Spawn "refactor-auth" to refactor the entire auth module
 ```
 
-Spawned sessions run as independent processes via `setsid`. They survive CLI exit, system load, and network drops. Check results later with `clawpilot_spawn_list` and `clawpilot_spawn_read`.
+### Auto-Resume (safety net)
 
-For recurring work, use `clawpilot_schedule` — systemd timers fire even when no CLI is running.
+If you quit the CLI while the agent is mid-task, Clawpilot automatically:
+1. Detects the agent was still working (tools in flight or response not yet complete)
+2. Captures your last prompt
+3. Spawns a background `copilot -p` session to continue the interrupted work
+4. On your next session start, reports what happened:
+
+```
+[Clawpilot] Your last session was interrupted mid-task.
+The interrupted work was auto-spawned as a background session.
+• Session: resume-1714265123456
+• Original prompt: Refactor the entire auth module...
+Use clawpilot_spawn_read("resume-1714265123456") to check progress.
+```
+
+This is a **best-effort safety net** — the spawned session gets the original prompt but not the full conversation context. For guaranteed results, use `clawpilot_spawn` explicitly.
 
 ---
 
