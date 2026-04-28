@@ -90,7 +90,11 @@ for ext in "${EXTENSIONS[@]}"; do
 done
 
 if [ -f "${CLAWPILOT_DIR}/scripts/import-openclaw-agents.mjs" ]; then
-    cp "${CLAWPILOT_DIR}/scripts/import-openclaw-agents.mjs" "${CLAWPILOT_STATE}/scripts/import-openclaw-agents.mjs"
+    src_agent_sync="${CLAWPILOT_DIR}/scripts/import-openclaw-agents.mjs"
+    dest_agent_sync="${CLAWPILOT_STATE}/scripts/import-openclaw-agents.mjs"
+    if [ "$(readlink -f "$src_agent_sync")" != "$(readlink -f "$dest_agent_sync" 2>/dev/null || printf '%s' "$dest_agent_sync")" ]; then
+        cp "$src_agent_sync" "$dest_agent_sync"
+    fi
     chmod 700 "${CLAWPILOT_STATE}/scripts/import-openclaw-agents.mjs"
     if command -v node &>/dev/null; then
         node "${CLAWPILOT_STATE}/scripts/import-openclaw-agents.mjs" || true
