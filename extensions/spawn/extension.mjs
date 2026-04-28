@@ -2,23 +2,19 @@
 // Launch and manage parallel background Copilot CLI sessions.
 // Includes auto-resume: detects interrupted tasks on exit and re-spawns them.
 import { joinSession } from "@github/copilot-sdk/extension";
-import { execFile, spawn as nodeSpawn } from "node:child_process";
-import { mkdir, readFile, writeFile, readdir, stat, rm } from "node:fs/promises";
+import { readFile, writeFile, readdir, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
-import { homedir } from "node:os";
+import { ensureDir, sanitizeName, tailFile, writeJsonFile } from "../_lib/fs.mjs";
+import { HOME, statePath } from "../_lib/platform.mjs";
+import { isProcessRunning, killProcessTree, spawnDetachedCopilot } from "../_lib/spawn-backend.mjs";
 
-const SPAWNED_DIR = join(homedir(), ".clawpilot", "spawned");
-const RESUME_FILE = join(homedir(), ".clawpilot", "interrupted.json");
-const COPILOT_BIN = "copilot";
+const SPAWNED_DIR = statePath("spawned");
+const RESUME_FILE = statePath("interrupted.json");
 
 // Track the session's last user message and whether the agent was mid-task
 let lastUserPrompt = null;
 let lastAssistantDone = true; // true = idle, false = agent is working
 let toolsInFlight = 0;
-
-async function ensureDir(dir) {
-    await mkdir(dir, { recursive: true });
-}
 
 async function getMeta(name) {
     try {
@@ -32,24 +28,7 @@ async function getMeta(name) {
 async function saveMeta(name, meta) {
     const dir = join(SPAWNED_DIR, name);
     await ensureDir(dir);
-    await writeFile(join(dir, "meta.json"), JSON.stringify(meta, null, 2));
-}
-
-function isProcessRunning(pid) {
-    try {
-        process.kill(pid, 0);
-        return true;
-    } catch {
-        return false;
-    }
-}
-
-async function tailFile(path, lines = 50) {
-    return new Promise((resolve) => {
-        execFile("tail", ["-n", String(lines), path], (err, stdout) => {
-            resolve(err ? `(no output yet)` : stdout);
-        });
-    });
+    await writeJsonFile(join(dir, "meta.json"), meta);
 }
 
 const session = await joinSession({
@@ -83,7 +62,7 @@ const session = await joinSession({
                 required: ["name", "prompt"],
             },
             handler: async (args) => {
-                const name = args.name.replace(/[^a-zA-Z0-9_-]/g, "-");
+                const name = sanitizeName(args.name);
                 const existing = await getMeta(name);
                 if (existing && isProcessRunning(existing.pid)) {
                     return { textResultForLlm: `Session '${name}' is already running (PID ${existing.pid}). Kill it first or use a different name.`, resultType: "failure" };
@@ -93,30 +72,13 @@ const session = await joinSession({
                 await ensureDir(sessionDir);
                 const logPath = join(sessionDir, "output.log");
 
-                const copilotArgs = [
-                    "-p", args.prompt,
-                    "--allow-all",
-                    "--autopilot",
-                    "--name", `spawn-${name}`,
-                    "--output-format", "text",
-                    "--silent",
-                    "--no-ask-user",
-                ];
-                if (args.model) copilotArgs.push("--model", args.model);
-
-                const { openSync, closeSync } = await import("node:fs");
-                const logFd = openSync(logPath, "w");
-
-                const child = nodeSpawn(COPILOT_BIN, copilotArgs, {
+                const child = spawnDetachedCopilot({
+                    prompt: args.prompt,
+                    name,
                     cwd: args.cwd || process.cwd(),
-                    stdio: ["ignore", logFd, logFd],
-                    detached: true,
-                    env: { ...process.env },
+                    model: args.model,
+                    logPath,
                 });
-
-                child.unref();
-                // Close our copy of the FD — the child owns it now
-                closeSync(logFd);
 
                 const meta = {
                     pid: child.pid,
@@ -194,7 +156,7 @@ const session = await joinSession({
                 required: ["name"],
             },
             handler: async (args) => {
-                const name = args.name.replace(/[^a-zA-Z0-9_-]/g, "-");
+                const name = sanitizeName(args.name);
                 const logPath = join(SPAWNED_DIR, name, "output.log");
                 const meta = await getMeta(name);
 
@@ -223,7 +185,7 @@ const session = await joinSession({
                 required: ["name"],
             },
             handler: async (args) => {
-                const name = args.name.replace(/[^a-zA-Z0-9_-]/g, "-");
+                const name = sanitizeName(args.name);
                 const meta = await getMeta(name);
                 if (!meta) return `Session '${name}' not found.`;
                 if (meta.status !== "running") return `Session '${name}' is not running (status: ${meta.status}).`;
@@ -234,12 +196,7 @@ const session = await joinSession({
                     return `Session '${name}' already exited.`;
                 }
 
-                try {
-                    // Kill the process group (setsid created a new group)
-                    process.kill(-meta.pid, "SIGTERM");
-                } catch {
-                    try { process.kill(meta.pid, "SIGTERM"); } catch { /* already dead */ }
-                }
+                await killProcessTree(meta.pid);
 
                 meta.status = "killed";
                 meta.endedAt = new Date().toISOString();
@@ -258,8 +215,7 @@ const session = await joinSession({
             },
             handler: async (args) => {
                 await ensureDir(SPAWNED_DIR);
-                const sanitize = (n) => n.replace(/[^a-zA-Z0-9_-]/g, "-");
-                const entries = args.name ? [sanitize(args.name)] : await readdir(SPAWNED_DIR);
+                const entries = args.name ? [sanitizeName(args.name)] : await readdir(SPAWNED_DIR);
                 let cleaned = 0;
 
                 for (const name of entries) {
@@ -296,9 +252,7 @@ const session = await joinSession({
 
                         if (stillRunning) {
                             // Stop it — we'll continue interactively
-                            try { process.kill(-meta.pid, "SIGTERM"); } catch {
-                                try { process.kill(meta.pid, "SIGTERM"); } catch { /* ok */ }
-                            }
+                            await killProcessTree(meta.pid);
                             meta.status = "handed-back";
                             meta.endedAt = new Date().toISOString();
                             await saveMeta(interrupted.spawnName, meta);
@@ -376,8 +330,9 @@ const session = await joinSession({
             if (!lastUserPrompt) return;
 
             // The user quit while the agent was working — auto-spawn to continue
-            const name = `resume-${Date.now()}`;
-            const resumePrompt =
+                const name = `resume-${Date.now()}`;
+                const resumeCwd = input.cwd || process.cwd();
+                const resumePrompt =
                 `CONTEXT: This task was interrupted when the user exited the CLI mid-execution.\n` +
                 `ORIGINAL TASK: ${lastUserPrompt}\n\n` +
                 `Continue and complete this task. Work autonomously to finish what was started.`;
@@ -388,28 +343,19 @@ const session = await joinSession({
                 await ensureDir(sessionDir);
                 const logPath = join(sessionDir, "output.log");
 
-                const { openSync, closeSync } = await import("node:fs");
-                const logFd = openSync(logPath, "w");
-
-                const child = nodeSpawn(COPILOT_BIN, [
-                    "-p", resumePrompt,
-                    "--allow-all", "--autopilot", "--silent", "--no-ask-user",
-                    "--name", `spawn-${name}`,
-                ], {
-                    cwd: input.cwd || process.cwd(),
-                    stdio: ["ignore", logFd, logFd],
-                    detached: true,
-                    env: { ...process.env },
+                const child = spawnDetachedCopilot({
+                    prompt: resumePrompt,
+                    name,
+                    cwd: resumeCwd,
+                    logPath,
                 });
-                child.unref();
-                closeSync(logFd);
 
                 await saveMeta(name, {
                     pid: child.pid,
                     name,
                     prompt: resumePrompt,
                     model: "default",
-                    cwd: input.cwd || process.cwd(),
+                    cwd: resumeCwd || HOME,
                     startedAt: new Date().toISOString(),
                     status: "running",
                     autoResumed: true,

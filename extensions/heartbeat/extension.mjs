@@ -1,27 +1,15 @@
 // Clawpilot CLI — heartbeat extension
 // Proactive background checks with session-start notification injection.
 import { joinSession } from "@github/copilot-sdk/extension";
-import { execFile } from "node:child_process";
-import { mkdir, readFile, writeFile, readdir } from "node:fs/promises";
+import { readFile, writeFile, readdir, unlink } from "node:fs/promises";
 import { join } from "node:path";
-import { homedir } from "node:os";
+import { ensureDir, sanitizeName } from "../_lib/fs.mjs";
+import { HOME, statePath } from "../_lib/platform.mjs";
+import { activeStatus, daemonReload, enableNow, removeUserUnit, stopDisable, unitName as systemdUnitName, writeUserUnit } from "../_lib/systemd.mjs";
 
-const HEARTBEAT_DIR = join(homedir(), ".clawpilot", "heartbeat");
+const HEARTBEAT_DIR = statePath("heartbeat");
 const CONFIG_FILE = join(HEARTBEAT_DIR, "config.json");
 const RESULTS_DIR = join(HEARTBEAT_DIR, "results");
-const SYSTEMD_DIR = join(homedir(), ".config", "systemd", "user");
-
-async function ensureDir(dir) {
-    await mkdir(dir, { recursive: true });
-}
-
-function exec(cmd, args) {
-    return new Promise((resolve) => {
-        execFile(cmd, args, { timeout: 15000 }, (err, stdout, stderr) => {
-            resolve({ ok: !err, stdout: stdout?.trim() || "", stderr: stderr?.trim() || "" });
-        });
-    });
-}
 
 async function loadConfig() {
     try {
@@ -51,7 +39,7 @@ async function getPendingResults() {
 }
 
 function unitName(name) {
-    return `clawpilot-hb-${name.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
+    return systemdUnitName("clawpilot-hb", name);
 }
 
 // Heartbeat scheduled tasks write their results to a file.
@@ -69,15 +57,15 @@ function buildHeartbeatPrompt(name, userPrompt) {
 
 function buildServiceUnit(name, prompt) {
     // Store prompt in a file, not inline in the unit
-    const promptFile = join(homedir(), ".clawpilot", "heartbeat", `${name}.prompt`);
+    const promptFile = join(HEARTBEAT_DIR, `${name}.prompt`);
     return `[Unit]
 Description=Clawpilot heartbeat: ${name.replace(/[\r\n]/g, "")}
 
 [Service]
 Type=oneshot
-WorkingDirectory=${homedir()}
+WorkingDirectory=${HOME}
 ExecStart=/bin/bash -c 'exec copilot -p "$$(cat "${promptFile}")" --allow-all --autopilot --silent --no-ask-user --name "hb-${name.replace(/[\r\n"]/g, "")}"'
-Environment=HOME=${homedir()}
+Environment=HOME=${HOME}
 Environment=PATH=${process.env.PATH}
 StandardOutput=journal
 StandardError=journal
@@ -114,7 +102,7 @@ const session = await joinSession({
                 required: ["name", "schedule", "prompt"],
             },
             handler: async (args) => {
-                const name = args.name.replace(/[^a-zA-Z0-9_-]/g, "-");
+                const name = sanitizeName(args.name);
                 const config = await loadConfig();
 
                 if (config.checks.find((c) => c.name === name)) {
@@ -126,7 +114,6 @@ const session = await joinSession({
                 }
 
                 await ensureDir(RESULTS_DIR);
-                await ensureDir(SYSTEMD_DIR);
 
                 const fullPrompt = buildHeartbeatPrompt(name, args.prompt);
                 const unit = unitName(name);
@@ -135,11 +122,11 @@ const session = await joinSession({
                 const promptFile = join(HEARTBEAT_DIR, `${name}.prompt`);
                 await writeFile(promptFile, fullPrompt, { mode: 0o600 });
 
-                await writeFile(join(SYSTEMD_DIR, `${unit}.service`), buildServiceUnit(name, fullPrompt));
-                await writeFile(join(SYSTEMD_DIR, `${unit}.timer`), buildTimerUnit(name, args.schedule));
+                await writeUserUnit(`${unit}.service`, buildServiceUnit(name, fullPrompt));
+                await writeUserUnit(`${unit}.timer`, buildTimerUnit(name, args.schedule));
 
-                await exec("systemctl", ["--user", "daemon-reload"]);
-                await exec("systemctl", ["--user", "enable", "--now", `${unit}.timer`]);
+                await daemonReload();
+                await enableNow(`${unit}.timer`);
 
                 config.checks.push({
                     name,
@@ -163,16 +150,15 @@ const session = await joinSession({
                 required: ["name"],
             },
             handler: async (args) => {
-                const name = args.name.replace(/[^a-zA-Z0-9_-]/g, "-");
+                const name = sanitizeName(args.name);
                 const unit = unitName(name);
 
-                await exec("systemctl", ["--user", "stop", `${unit}.timer`]);
-                await exec("systemctl", ["--user", "disable", `${unit}.timer`]);
+                await stopDisable(`${unit}.timer`);
 
-                for (const ext of [".service", ".timer"]) {
-                    try { const { unlink } = await import("node:fs/promises"); await unlink(join(SYSTEMD_DIR, `${unit}${ext}`)); } catch { /* ok */ }
-                }
-                await exec("systemctl", ["--user", "daemon-reload"]);
+                await removeUserUnit(`${unit}.service`);
+                await removeUserUnit(`${unit}.timer`);
+                try { await unlink(join(HEARTBEAT_DIR, `${name}.prompt`)); } catch { /* ok */ }
+                await daemonReload();
 
                 const config = await loadConfig();
                 config.checks = config.checks.filter((c) => c.name !== name);
@@ -196,7 +182,7 @@ const session = await joinSession({
                 let output = "## Heartbeat Checks\n";
                 for (const c of config.checks) {
                     const unit = unitName(c.name);
-                    const status = await exec("systemctl", ["--user", "is-active", `${unit}.timer`]);
+                    const status = await activeStatus(`${unit}.timer`);
                     output += `• ${c.name} | ${c.schedule} | ${status.stdout || "unknown"}\n`;
                 }
 
@@ -226,7 +212,7 @@ const session = await joinSession({
                 for (const f of files) {
                     if (!f.endsWith(".json")) continue;
                     if (args.name && !f.startsWith(args.name + "-")) continue;
-                    try { const { unlink } = await import("node:fs/promises"); await unlink(join(RESULTS_DIR, f)); cleared++; } catch { /* ok */ }
+                    try { await unlink(join(RESULTS_DIR, f)); cleared++; } catch { /* ok */ }
                 }
                 return `Cleared ${cleared} heartbeat result(s).`;
             },

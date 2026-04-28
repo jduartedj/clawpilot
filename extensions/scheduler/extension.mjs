@@ -1,38 +1,21 @@
 // Clawpilot CLI — scheduler extension
 // Schedule recurring tasks via systemd user timers.
 import { joinSession } from "@github/copilot-sdk/extension";
-import { execFile } from "node:child_process";
-import { mkdir, writeFile, unlink, readFile } from "node:fs/promises";
+import { writeFile, unlink, readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { homedir } from "node:os";
+import { HOME, COPILOT_BIN, statePath } from "../_lib/platform.mjs";
+import { ensureDir, readJsonFile, sanitizeName } from "../_lib/fs.mjs";
+import { daemonReload, enableNow, journalLogs, listTimers, removeUserUnit, runTransientUnit, startUnit, statusUnit, stopDisable, unitName as systemdUnitName, writeUserUnit } from "../_lib/systemd.mjs";
 
-const SYSTEMD_DIR = join(homedir(), ".config", "systemd", "user");
-const STATE_DIR = join(homedir(), ".clawpilot", "scheduler");
-const OPENCLAW_CRON_DIR = join(homedir(), ".openclaw", "cron");
+const STATE_DIR = statePath("scheduler");
+const OPENCLAW_CRON_DIR = join(HOME, ".openclaw", "cron");
 const OPENCLAW_JOBS_FILE = join(OPENCLAW_CRON_DIR, "jobs.json");
 const OPENCLAW_STATE_FILE = join(OPENCLAW_CRON_DIR, "jobs-state.json");
 const OPENCLAW_RUNS_DIR = join(OPENCLAW_CRON_DIR, "runs");
-const OPENCLAW_WORKSPACE = join(homedir(), "clawd");
-const COPILOT_BIN = "copilot";
-
-async function ensureDir(dir) {
-    await mkdir(dir, { recursive: true });
-}
-
-function exec(cmd, args) {
-    return new Promise((resolve) => {
-        execFile(cmd, args, { timeout: 15000 }, (err, stdout, stderr) => {
-            resolve({ ok: !err, stdout: stdout?.trim() || "", stderr: stderr?.trim() || "", code: err?.code });
-        });
-    });
-}
+const OPENCLAW_WORKSPACE = join(HOME, "clawd");
 
 function unitName(name) {
-    return `clawpilot-${name.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
-}
-
-function sanitizeName(name) {
-    return String(name || "").replace(/[^a-zA-Z0-9_-]/g, "-");
+    return systemdUnitName("clawpilot", name);
 }
 
 function shellSingleQuote(value) {
@@ -63,15 +46,6 @@ function formatOpenClawSchedule(schedule) {
     if (schedule.kind === "every") return `every ${formatDuration(Number(schedule.everyMs))}`;
     if (schedule.kind === "at") return `at ${schedule.at || "-"}`;
     return schedule.kind || "-";
-}
-
-async function readJsonFile(path, fallback) {
-    try {
-        return JSON.parse(await readFile(path, "utf8"));
-    } catch (err) {
-        if (err?.code === "ENOENT") return fallback;
-        throw err;
-    }
 }
 
 async function readOpenClawCrons() {
@@ -144,15 +118,7 @@ async function runOpenClawJob(job) {
     await writeFile(promptFile, buildOpenClawPrompt(job), { mode: 0o600 });
 
     const command = `exec ${COPILOT_BIN} -p "$(cat ${shellSingleQuote(promptFile)})" --allow-all --autopilot --silent --no-ask-user --name ${shellSingleQuote(`openclaw-cron-${slug}`)}`;
-    const result = await exec("systemd-run", [
-        "--user",
-        "--collect",
-        `--unit=${unit}`,
-        `--working-directory=${cwd}`,
-        "/bin/bash",
-        "-lc",
-        command,
-    ]);
+    const result = await runTransientUnit({ unit, cwd, command });
     if (!result.ok) {
         return { textResultForLlm: `Failed to trigger imported OpenClaw cron: ${result.stderr}`, resultType: "failure" };
     }
@@ -170,7 +136,7 @@ Description=Clawpilot scheduled task: ${name.replace(/[\r\n]/g, "")}
 Type=oneshot
 WorkingDirectory=${cwd.replace(/[\r\n]/g, "")}
 ExecStart=/bin/bash -c 'exec ${COPILOT_BIN} -p "$$(cat "${promptFile}")" --allow-all --autopilot --silent --no-ask-user --name "sched-${name.replace(/[\r\n"]/g, "")}"${modelArg}'
-Environment=HOME=${homedir()}
+Environment=HOME=${HOME}
 Environment=PATH=${process.env.PATH}
 StandardOutput=journal
 StandardError=journal
@@ -216,9 +182,8 @@ const session = await joinSession({
             handler: async (args) => {
                 const name = args.name.replace(/[^a-zA-Z0-9_-]/g, "-");
                 const unit = unitName(name);
-                const cwd = args.cwd || homedir();
+                const cwd = args.cwd || HOME;
 
-                await ensureDir(SYSTEMD_DIR);
                 await ensureDir(STATE_DIR);
 
                 if (/[\r\n]/.test(args.schedule)) {
@@ -230,16 +195,10 @@ const session = await joinSession({
                 await writeFile(promptFile, args.prompt, { mode: 0o600 });
 
                 // Write service unit
-                await writeFile(
-                    join(SYSTEMD_DIR, `${unit}.service`),
-                    buildServiceUnit(name, cwd, args.model)
-                );
+                await writeUserUnit(`${unit}.service`, buildServiceUnit(name, cwd, args.model));
 
                 // Write timer unit
-                await writeFile(
-                    join(SYSTEMD_DIR, `${unit}.timer`),
-                    buildTimerUnit(name, args.schedule)
-                );
+                await writeUserUnit(`${unit}.timer`, buildTimerUnit(name, args.schedule));
 
                 // Save metadata
                 await writeFile(
@@ -255,15 +214,15 @@ const session = await joinSession({
                 );
 
                 // Enable and start
-                await exec("systemctl", ["--user", "daemon-reload"]);
-                const result = await exec("systemctl", ["--user", "enable", "--now", `${unit}.timer`]);
+                await daemonReload();
+                const result = await enableNow(`${unit}.timer`);
 
                 if (!result.ok) {
                     return { textResultForLlm: `Failed to enable timer: ${result.stderr}`, resultType: "failure" };
                 }
 
                 // Get next run time
-                const status = await exec("systemctl", ["--user", "status", `${unit}.timer`, "--no-pager"]);
+                const status = await statusUnit(`${unit}.timer`);
 
                 return `Scheduled '${name}' (${args.schedule})\nUnit: ${unit}\n${status.stdout}`;
             },
@@ -273,9 +232,7 @@ const session = await joinSession({
             description: "List all scheduled Clawpilot tasks with their next run time, including imported OpenClaw crons if present.",
             parameters: { type: "object", properties: {} },
             handler: async () => {
-                const result = await exec("systemctl", [
-                    "--user", "list-timers", "clawpilot-*", "--no-pager", "--all",
-                ]);
+                const result = await listTimers("clawpilot-*");
                 const local = (!result.stdout || result.stdout.includes("0 timers"))
                     ? "No native Clawpilot scheduled tasks."
                     : result.stdout;
@@ -306,18 +263,17 @@ const session = await joinSession({
                 const name = args.name.replace(/[^a-zA-Z0-9_-]/g, "-");
                 const unit = unitName(name);
 
-                await exec("systemctl", ["--user", "stop", `${unit}.timer`]);
-                await exec("systemctl", ["--user", "disable", `${unit}.timer`]);
+                await stopDisable(`${unit}.timer`);
 
-                const servicePath = join(SYSTEMD_DIR, `${unit}.service`);
-                const timerPath = join(SYSTEMD_DIR, `${unit}.timer`);
+                const promptPath = join(STATE_DIR, `${name}.prompt`);
                 const metaPath = join(STATE_DIR, `${name}.json`);
 
-                for (const f of [servicePath, timerPath, metaPath]) {
-                    try { await unlink(f); } catch { /* ignore */ }
-                }
+                await removeUserUnit(`${unit}.service`);
+                await removeUserUnit(`${unit}.timer`);
+                try { await unlink(promptPath); } catch { /* ignore */ }
+                try { await unlink(metaPath); } catch { /* ignore */ }
 
-                await exec("systemctl", ["--user", "daemon-reload"]);
+                await daemonReload();
                 return `Cancelled and removed scheduled task '${name}'.`;
             },
         },
@@ -339,7 +295,7 @@ const session = await joinSession({
 
                 const name = args.name.replace(/[^a-zA-Z0-9_-]/g, "-");
                 const unit = unitName(name);
-                const result = await exec("systemctl", ["--user", "start", `${unit}.service`]);
+                const result = await startUnit(`${unit}.service`);
 
                 if (!result.ok) {
                     return { textResultForLlm: `Failed to start: ${result.stderr}`, resultType: "failure" };
@@ -374,10 +330,7 @@ const session = await joinSession({
 
                 const name = args.name.replace(/[^a-zA-Z0-9_-]/g, "-");
                 const unit = unitName(name);
-                const result = await exec("journalctl", [
-                    "--user", "-u", `${unit}.service`, "--no-pager",
-                    "-n", String(args.lines || 100),
-                ]);
+                const result = await journalLogs(`${unit}.service`, args.lines || 100);
                 return result.stdout || "(no logs yet)";
             },
         },

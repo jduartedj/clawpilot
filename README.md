@@ -31,7 +31,7 @@ cd ~/.clawpilot && ./install.sh
 clawpilot
 ```
 
-Requires **Linux with systemd**. Optional: `sudo apt install sqlite3 age jq` for memory-db, vault, and daemon.
+Requires **Linux with systemd**. Optional: `sudo apt install sqlite3 age` for memory-db and vault.
 
 ## Usage
 

@@ -36,7 +36,7 @@ The installer automatically:
 - Copies all 9 extensions to `~/.copilot/extensions/`
 - Creates state directories in `~/.clawpilot/`
 - Links the `clawpilot` launcher to `~/.local/bin/`
-- Reports any missing optional dependencies (sqlite3, age, jq)
+- Reports any missing optional dependencies (sqlite3, age)
 
 Then restart Copilot CLI or run `/clear`. All `clawpilot_*` tools become available.
 
@@ -46,7 +46,6 @@ Then restart Copilot CLI or run `/clear`. All `clawpilot_*` tools become availab
 |------|-----|---------|
 | `sqlite3` | memory-db extension | `sudo apt install sqlite3` |
 | `age` | vault extension | `sudo apt install age` |
-| `jq` | daemon handler script | `sudo apt install jq` |
 
 ### System requirements
 
@@ -490,7 +489,7 @@ A systemd `.path` unit that watches an inbox directory. When a JSON file appears
 Install the systemd path watcher and handler script. Creates:
 - `~/.config/systemd/user/clawpilot-daemon.path` (watches inbox)
 - `~/.config/systemd/user/clawpilot-daemon.service` (handler)
-- `~/.clawpilot/daemon-handler.sh` (dispatch script)
+- shared Node daemon handler under `~/.copilot/extensions/_lib/`
 
 #### `clawpilot_daemon_status`
 
@@ -762,7 +761,7 @@ All Clawpilot state lives in `~/.clawpilot/` — completely isolated from `~/.co
 ├── logs/                 # Daemon session logs
 ├── memory.db             # SQLite memory database
 ├── fallback.json         # Fallback retry config
-└── daemon-handler.sh     # Daemon dispatch script (0755)
+└── scripts/              # Helper scripts, including OpenClaw agent sync
 ```
 
 ### Systemd Units (created by scheduler/heartbeat/daemon)
@@ -820,7 +819,7 @@ systemctl --user status clawpilot-daemon.path
 ls ~/.clawpilot/inbox/
 
 # Check handler script
-cat ~/.clawpilot/daemon-handler.sh
+journalctl --user -u clawpilot-daemon.service --no-pager -n 100
 
 # View daemon logs
 journalctl --user -u clawpilot-daemon.service --no-pager -n 50

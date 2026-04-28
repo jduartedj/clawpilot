@@ -2,28 +2,18 @@
 // Always-on message queue dispatcher.
 // Watches ~/.clawpilot/inbox/ for message files and spawns Copilot sessions to handle them.
 import { joinSession } from "@github/copilot-sdk/extension";
-import { execFile } from "node:child_process";
-import { mkdir, readFile, writeFile, readdir, unlink, stat, rename } from "node:fs/promises";
-import { join } from "node:path";
-import { homedir } from "node:os";
+import { fileURLToPath } from "node:url";
+import { writeFile, readdir } from "node:fs/promises";
+import { dirname, join, resolve } from "node:path";
+import { ensureDir, sanitizeName } from "../_lib/fs.mjs";
+import { HOME, statePath } from "../_lib/platform.mjs";
+import { activeStatus, daemonReload, enableNow, stopDisable, writeUserUnit } from "../_lib/systemd.mjs";
 
-const INBOX_DIR = join(homedir(), ".clawpilot", "inbox");
-const PROCESSED_DIR = join(homedir(), ".clawpilot", "processed");
-const DAEMON_STATE = join(homedir(), ".clawpilot", "daemon-state.json");
-const SYSTEMD_DIR = join(homedir(), ".config", "systemd", "user");
+const INBOX_DIR = statePath("inbox");
+const PROCESSED_DIR = statePath("processed");
 const DAEMON_UNIT = "clawpilot-daemon";
-
-async function ensureDir(dir) {
-    await mkdir(dir, { recursive: true });
-}
-
-function exec(cmd, args, opts = {}) {
-    return new Promise((resolve) => {
-        execFile(cmd, args, { timeout: 15000, ...opts }, (err, stdout, stderr) => {
-            resolve({ ok: !err, stdout: stdout?.trim() || "", stderr: stderr?.trim() || "" });
-        });
-    });
-}
+const EXTENSION_DIR = dirname(fileURLToPath(import.meta.url));
+const DAEMON_HANDLER = resolve(EXTENSION_DIR, "..", "_lib", "daemon-handler.mjs");
 
 function buildDaemonService() {
     // The daemon is a systemd path unit that watches the inbox directory
@@ -33,7 +23,7 @@ function buildDaemonService() {
 Description=Clawpilot inbox watcher
 
 [Path]
-DirectoryNotEmpty=${INBOX_DIR}
+PathExistsGlob=${INBOX_DIR}/*.json
 MakeDirectory=yes
 
 [Install]
@@ -45,38 +35,11 @@ Description=Clawpilot inbox handler
 [Service]
 Type=oneshot
 KillMode=process
-ExecStart=${join(homedir(), ".clawpilot", "daemon-handler.sh")}
-Environment=HOME=${homedir()}
+ExecStart=/usr/bin/env node ${DAEMON_HANDLER}
+Environment=HOME=${HOME}
 Environment=PATH=${process.env.PATH}
 StandardOutput=journal
 StandardError=journal
-`,
-        handler: `#!/usr/bin/env bash
-set -euo pipefail
-INBOX="${INBOX_DIR}"
-PROCESSED="${PROCESSED_DIR}"
-mkdir -p "$PROCESSED"
-
-for f in "$INBOX"/*.json; do
-    [ -f "$f" ] || continue
-    name="$(basename "$f" .json)"
-    prompt="$(jq -r '.prompt // empty' "$f" 2>/dev/null)"
-    model="$(jq -r '.model // empty' "$f" 2>/dev/null)"
-    cwd="$(jq -r '.cwd // empty' "$f" 2>/dev/null)"
-
-    if [ -z "$prompt" ]; then
-        mv "$f" "$PROCESSED/"
-        continue
-    fi
-
-    args=(-p "$prompt" --allow-all --autopilot --silent --no-ask-user --name "daemon-$name")
-    [ -n "$model" ] && args+=(--model "$model")
-
-    cd "\${cwd:-$HOME}"
-    setsid copilot "\${args[@]}" >> "${homedir()}/.clawpilot/logs/daemon-$name.log" 2>&1 &
-
-    mv "$f" "$PROCESSED/"
-done
 `,
     };
 }
@@ -92,25 +55,21 @@ const session = await joinSession({
             handler: async () => {
                 await ensureDir(INBOX_DIR);
                 await ensureDir(PROCESSED_DIR);
-                await ensureDir(join(homedir(), ".clawpilot", "logs"));
-                await ensureDir(SYSTEMD_DIR);
+                await ensureDir(statePath("logs"));
 
                 const units = buildDaemonService();
 
-                await writeFile(join(SYSTEMD_DIR, `${DAEMON_UNIT}.path`), units.path);
-                await writeFile(join(SYSTEMD_DIR, `${DAEMON_UNIT}.service`), units.service);
+                await writeUserUnit(`${DAEMON_UNIT}.path`, units.path);
+                await writeUserUnit(`${DAEMON_UNIT}.service`, units.service);
 
-                const handlerPath = join(homedir(), ".clawpilot", "daemon-handler.sh");
-                await writeFile(handlerPath, units.handler, { mode: 0o755 });
-
-                await exec("systemctl", ["--user", "daemon-reload"]);
-                const result = await exec("systemctl", ["--user", "enable", "--now", `${DAEMON_UNIT}.path`]);
+                await daemonReload();
+                const result = await enableNow(`${DAEMON_UNIT}.path`);
 
                 if (!result.ok) {
                     return { textResultForLlm: `Setup failed: ${result.stderr}`, resultType: "failure" };
                 }
 
-                return `Daemon setup complete.\n• Inbox: ${INBOX_DIR}\n• Drop JSON files with {prompt, model?, cwd?} to trigger Copilot sessions.\n• Logs: ~/.clawpilot/logs/`;
+                return `Daemon setup complete.\n• Inbox: ${INBOX_DIR}\n• Drop JSON files with {prompt, model?, cwd?} to trigger Copilot sessions.\n• Handler: ${DAEMON_HANDLER}\n• Logs: ~/.clawpilot/logs/`;
             },
         },
         {
@@ -118,7 +77,7 @@ const session = await joinSession({
             description: "Check if the Clawpilot daemon is running and show inbox status.",
             parameters: { type: "object", properties: {} },
             handler: async () => {
-                const pathStatus = await exec("systemctl", ["--user", "is-active", `${DAEMON_UNIT}.path`]);
+                const pathStatus = await activeStatus(`${DAEMON_UNIT}.path`);
 
                 await ensureDir(INBOX_DIR);
                 await ensureDir(PROCESSED_DIR);
@@ -149,7 +108,7 @@ const session = await joinSession({
             handler: async (args) => {
                 await ensureDir(INBOX_DIR);
                 const name = args.name || `task-${Date.now()}`;
-                const fileName = `${name.replace(/[^a-zA-Z0-9_-]/g, "-")}.json`;
+                const fileName = `${sanitizeName(name)}.json`;
 
                 await writeFile(
                     join(INBOX_DIR, fileName),
@@ -169,8 +128,7 @@ const session = await joinSession({
             description: "Stop the Clawpilot daemon.",
             parameters: { type: "object", properties: {} },
             handler: async () => {
-                await exec("systemctl", ["--user", "stop", `${DAEMON_UNIT}.path`]);
-                await exec("systemctl", ["--user", "disable", `${DAEMON_UNIT}.path`]);
+                await stopDisable(`${DAEMON_UNIT}.path`);
                 return "Daemon stopped and disabled. Use clawpilot_daemon_setup to restart.";
             },
         },

@@ -48,7 +48,6 @@ fi
 MISSING_OPTIONAL=()
 command -v sqlite3 &>/dev/null || MISSING_OPTIONAL+=("sqlite3 (for memory-db)")
 command -v age &>/dev/null     || MISSING_OPTIONAL+=("age (for vault)")
-command -v jq &>/dev/null      || MISSING_OPTIONAL+=("jq (for daemon)")
 
 if [ ${#MISSING_OPTIONAL[@]} -gt 0 ]; then
     echo ""
@@ -56,7 +55,7 @@ if [ ${#MISSING_OPTIONAL[@]} -gt 0 ]; then
     for dep in "${MISSING_OPTIONAL[@]}"; do
         echo "   • $dep"
     done
-    echo "   Install with: sudo apt install sqlite3 age jq"
+    echo "   Install with: sudo apt install sqlite3 age"
 fi
 
 # Create state directories with restrictive permissions
@@ -66,6 +65,53 @@ echo "✅ State directory: ${CLAWPILOT_STATE} (0700)"
 
 # Create copilot extensions directory if needed
 mkdir -p "${COPILOT_EXT_DIR}"
+
+# Install shared extension libraries used by multiple Clawpilot extensions.
+if [ -d "${CLAWPILOT_DIR}/extensions/_lib" ]; then
+    rm -rf "${COPILOT_EXT_DIR}/_lib"
+    mkdir -p "${COPILOT_EXT_DIR}/_lib"
+    cp -R "${CLAWPILOT_DIR}/extensions/_lib/." "${COPILOT_EXT_DIR}/_lib/"
+    echo "✅ shared libs → ${COPILOT_EXT_DIR}/_lib"
+fi
+
+# Migrate existing daemon installs from the legacy bash/jq handler to the
+# shared Node handler. The daemon extension remains the source of truth for
+# unit contents, so a temporary Copilot session is not needed for upgrades.
+DAEMON_SERVICE="${HOME}/.config/systemd/user/clawpilot-daemon.service"
+DAEMON_PATH="${HOME}/.config/systemd/user/clawpilot-daemon.path"
+DAEMON_HANDLER="${COPILOT_EXT_DIR}/_lib/daemon-handler.mjs"
+if [ -f "$DAEMON_SERVICE" ] && [ -f "$DAEMON_HANDLER" ]; then
+    mkdir -p "$(dirname "$DAEMON_SERVICE")"
+    cat > "$DAEMON_SERVICE" <<EOF
+[Unit]
+Description=Clawpilot inbox handler
+
+[Service]
+Type=oneshot
+KillMode=process
+ExecStart=/usr/bin/env node ${DAEMON_HANDLER}
+Environment=HOME=${HOME}
+Environment=PATH=${PATH}
+StandardOutput=journal
+StandardError=journal
+EOF
+    cat > "$DAEMON_PATH" <<EOF
+[Unit]
+Description=Clawpilot inbox watcher
+
+[Path]
+PathExistsGlob=${CLAWPILOT_STATE}/inbox/*.json
+MakeDirectory=yes
+
+[Install]
+WantedBy=default.target
+EOF
+    systemctl --user daemon-reload 2>/dev/null || true
+    if systemctl --user is-enabled clawpilot-daemon.path >/dev/null 2>&1; then
+        systemctl --user restart clawpilot-daemon.path 2>/dev/null || true
+    fi
+    echo "✅ daemon unit migrated to Node handler"
+fi
 
 # Install each extension
 installed=0
