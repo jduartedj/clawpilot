@@ -8,6 +8,11 @@ Add this to your project's `.github/copilot-instructions.md` or reference via `C
 
 You have `clawpilot_*` tools for background sessions, scheduling, heartbeats, messaging, memory, secrets, and orchestration.
 
+### OpenClaw Agent Imports
+- On install and `clawpilot` startup, OpenClaw agents from `~/.openclaw/openclaw.json` with `agentDir/SOUL.md` are synced into Copilot custom agents under `~/.copilot/agents/`.
+- Missing agents are imported; existing agents are updated only when the OpenClaw `SOUL.md` is newer than the Copilot agent file.
+- Imported agents are normal Copilot custom agents and can be invoked with the Task tool's custom-agent types when available.
+
 ### Background Work
 - `clawpilot_spawn(name, prompt, cwd?, model?)` — launch long tasks in the background
 - `clawpilot_spawn_list()` — check spawned session status

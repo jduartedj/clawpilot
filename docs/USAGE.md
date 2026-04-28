@@ -87,6 +87,22 @@ The `clawpilot` command wraps `copilot` with these defaults:
 
 Use `--no-yolo` and `--no-autopilot` to disable these for more cautious work. Use `--session <name>` to maintain multiple persistent sessions (e.g., `--session work`, `--session personal`).
 
+### OpenClaw Agent Sync
+
+On install and on every `clawpilot` start, Clawpilot reads `~/.openclaw/openclaw.json` and imports OpenClaw agents that have an `agentDir` with a `SOUL.md` into Copilot's user custom-agent directory:
+
+```text
+~/.copilot/agents/<agent-id>.agent.md
+```
+
+The sync is timestamp-aware:
+
+- Missing Copilot agents are imported.
+- Existing Copilot agents are updated only when the OpenClaw `SOUL.md` is newer.
+- Existing Copilot agents with the same or newer timestamp are preserved, so local Copilot edits are not overwritten.
+
+Imported agents keep the OpenClaw persona text, map supported models where possible, and include a safety note that OpenClaw instructions about spawning/invoking Copilot CLI should be ignored because the agent is already running inside Copilot CLI.
+
 ---
 
 ## ⚠️ Important: Spawn Long Tasks

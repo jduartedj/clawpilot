@@ -83,6 +83,7 @@ Once running, just ask naturally:
 - **Persistent session** — `clawpilot` command always resumes your "main" session
 - **Smart workspace** — auto-detects OpenClaw workspace dir, falls back to `~/clawd` or `~/`
 - **OpenClaw-aware scheduler** — imports existing `~/.openclaw/cron` jobs as read-only `openclaw:<id>` entries
+- **OpenClaw agent sync** — imports OpenClaw `agents/*/SOUL.md` personas into Copilot custom agents on startup
 - **No npm dependencies** — all extensions use Node.js built-ins only
 - **Security reviewed** — prompts stored in files (not systemd units), vault uses age encryption with `0700`/`0600` permissions, tokens validated on setup
 - **Linux-first** — systemd for scheduling/daemon; macOS support planned

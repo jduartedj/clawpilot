@@ -60,8 +60,8 @@ if [ ${#MISSING_OPTIONAL[@]} -gt 0 ]; then
 fi
 
 # Create state directories with restrictive permissions
-mkdir -p "${CLAWPILOT_STATE}"/{spawned,heartbeat,vault,logs,scheduler,channels,orchestrator,inbox,processed,history}
-chmod 700 "${CLAWPILOT_STATE}" "${CLAWPILOT_STATE}"/{spawned,heartbeat,vault,logs,scheduler,channels,orchestrator,inbox,processed,history}
+mkdir -p "${CLAWPILOT_STATE}"/{spawned,heartbeat,vault,logs,scheduler,channels,orchestrator,inbox,processed,history,scripts}
+chmod 700 "${CLAWPILOT_STATE}" "${CLAWPILOT_STATE}"/{spawned,heartbeat,vault,logs,scheduler,channels,orchestrator,inbox,processed,history,scripts}
 echo "✅ State directory: ${CLAWPILOT_STATE} (0700)"
 
 # Create copilot extensions directory if needed
@@ -88,6 +88,14 @@ for ext in "${EXTENSIONS[@]}"; do
     echo "✅ ${ext} → ${dest_dir}"
     installed=$((installed + 1))
 done
+
+if [ -f "${CLAWPILOT_DIR}/scripts/import-openclaw-agents.mjs" ]; then
+    cp "${CLAWPILOT_DIR}/scripts/import-openclaw-agents.mjs" "${CLAWPILOT_STATE}/scripts/import-openclaw-agents.mjs"
+    chmod 700 "${CLAWPILOT_STATE}/scripts/import-openclaw-agents.mjs"
+    if command -v node &>/dev/null; then
+        node "${CLAWPILOT_STATE}/scripts/import-openclaw-agents.mjs" || true
+    fi
+fi
 
 echo ""
 echo "🦞 Installed ${installed} extensions (${skipped} skipped)"

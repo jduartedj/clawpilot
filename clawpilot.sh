@@ -51,6 +51,13 @@ except:
     echo "${HOME}"
 }
 
+sync_openclaw_agents() {
+    local sync_script="${HOME}/.clawpilot/scripts/import-openclaw-agents.mjs"
+    if [[ -f "$sync_script" ]] && command -v node &>/dev/null; then
+        node "$sync_script" >/dev/null 2>&1 || true
+    fi
+}
+
 # Parse clawpilot-specific flags (before --)
 COPILOT_EXTRA_ARGS=()
 while [[ $# -gt 0 ]]; do
@@ -65,6 +72,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 WORKSPACE=$(detect_workspace)
+sync_openclaw_agents
 
 # Build copilot args — try resume, fall back to new named session
 ARGS=()
