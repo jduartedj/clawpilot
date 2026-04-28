@@ -195,6 +195,7 @@ const session = await joinSession({
                     }
                     try { await unlink(join(HEARTBEAT_DIR, `${name}.prompt`)); } catch { /* ok */ }
                     try { await unlink(join(HEARTBEAT_DIR, `${name}.json`)); } catch { /* ok */ }
+                    try { await unlink(join(HEARTBEAT_DIR, `${name}.ps1`)); } catch { /* ok */ }
 
                     const config = await loadConfig();
                     config.checks = config.checks.filter((c) => c.name !== name);

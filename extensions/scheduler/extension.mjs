@@ -318,8 +318,10 @@ const session = await joinSession({
                     }
                     const promptPath = join(STATE_DIR, `${name}.prompt`);
                     const metaPath = join(STATE_DIR, `${name}.json`);
+                    const wrapperPath = join(STATE_DIR, `${name}.ps1`);
                     try { await unlink(promptPath); } catch { /* ignore */ }
                     try { await unlink(metaPath); } catch { /* ignore */ }
+                    try { await unlink(wrapperPath); } catch { /* ignore */ }
                     return `Cancelled and removed scheduled task '${name}'.`;
                 }
 

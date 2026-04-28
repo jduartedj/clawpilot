@@ -12,6 +12,10 @@ function winCommandQuote(value) {
     return `"${String(value).replace(/"/g, '\\"')}"`;
 }
 
+function powerShellSingleQuote(value) {
+    return `'${String(value).replace(/'/g, "''")}'`;
+}
+
 async function restrictWindowsFileAccess(path) {
     if (!IS_WINDOWS) return;
     const username = process.env.USERNAME;
@@ -156,6 +160,14 @@ exit $exitCode
 }
 
 export function buildPowerShellTaskCommand({ scriptPath, promptFile, copilotName, cwd, model, logFile }) {
+    if (!promptFile && !copilotName && !cwd && !model && !logFile) {
+        return [
+            "powershell.exe",
+            "-NoProfile",
+            "-ExecutionPolicy", "Bypass",
+            "-File", winCommandQuote(scriptPath),
+        ].join(" ");
+    }
     const parts = [
         "powershell.exe",
         "-NoProfile",
@@ -168,6 +180,22 @@ export function buildPowerShellTaskCommand({ scriptPath, promptFile, copilotName
     if (model) parts.push("-Model", winCommandQuote(model));
     if (logFile) parts.push("-LogFile", winCommandQuote(logFile));
     return parts.join(" ");
+}
+
+async function writeTaskWrapper({ wrapperFile, runnerScript, promptFile, copilotName, cwd, model, logFile }) {
+    const args = [
+        "-PromptFile", powerShellSingleQuote(promptFile),
+        "-Name", powerShellSingleQuote(copilotName),
+        "-Cwd", powerShellSingleQuote(cwd),
+    ];
+    if (model) args.push("-Model", powerShellSingleQuote(model));
+    if (logFile) args.push("-LogFile", powerShellSingleQuote(logFile));
+    await writeFile(wrapperFile, `$ErrorActionPreference = "Stop"
+& ${powerShellSingleQuote(runnerScript)} ${args.join(" ")}
+$exitCode = if ($null -eq $LASTEXITCODE) { 0 } else { $LASTEXITCODE }
+exit $exitCode
+`);
+    await restrictWindowsFileAccess(wrapperFile);
 }
 
 export async function createScheduledCopilotTask({
@@ -185,19 +213,22 @@ export async function createScheduledCopilotTask({
     const promptFile = join(stateDir, `${safe}.prompt`);
     const logFile = join(stateDir, `${safe}.log`);
     const metaFile = join(stateDir, `${safe}.json`);
+    const wrapperFile = join(stateDir, `${safe}.ps1`);
     await ensureDir(stateDir);
     await writeFile(promptFile, prompt, { mode: 0o600 });
     await restrictWindowsFileAccess(promptFile);
     const scriptPath = await ensureRunnerScript();
     const scheduleArgs = parseWindowsSchedule(schedule);
-    const command = buildPowerShellTaskCommand({
-        scriptPath,
+    await writeTaskWrapper({
+        wrapperFile,
+        runnerScript: scriptPath,
         promptFile,
         copilotName: copilotName || `${prefix}-${safe}`,
         cwd,
         model,
         logFile,
     });
+    const command = buildPowerShellTaskCommand({ scriptPath: wrapperFile });
     const result = await exec("schtasks.exe", ["/Create", "/F", "/TN", tn, "/TR", command, ...scheduleArgs]);
     if (!result.ok) return { ...result, taskName: tn };
     await writeFile(metaFile, JSON.stringify({
@@ -208,6 +239,7 @@ export async function createScheduledCopilotTask({
         cwd,
         model: model || "default",
         logFile,
+        wrapperFile,
         createdAt: new Date().toISOString(),
     }, null, 2), { mode: 0o600 });
     await restrictWindowsFileAccess(metaFile);
