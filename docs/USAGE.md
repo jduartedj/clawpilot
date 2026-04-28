@@ -58,6 +58,26 @@ cd ~/.clawpilot && ./uninstall.sh
 
 ---
 
+## ⚠️ Important: Spawn Long Tasks
+
+**If you quit the CLI, any in-progress direct work dies and is NOT automatically resumed.** Copilot CLI's `/resume` restores conversation history but does not re-execute interrupted tasks.
+
+**Rule of thumb:** If a task might take more than a few minutes, always use `clawpilot_spawn` instead of asking directly:
+
+```
+# ❌ Risky — dies if you quit
+> Refactor the entire auth module
+
+# ✅ Safe — survives CLI exit
+> Spawn "refactor-auth" to refactor the entire auth module
+```
+
+Spawned sessions run as independent processes via `setsid`. They survive CLI exit, system load, and network drops. Check results later with `clawpilot_spawn_list` and `clawpilot_spawn_read`.
+
+For recurring work, use `clawpilot_schedule` — systemd timers fire even when no CLI is running.
+
+---
+
 ## 🚀 spawn — Background Sessions
 
 Launch autonomous Copilot CLI sessions in the background. Each session runs `copilot -p` with `--allow-all --autopilot` and captures output to a log file.
