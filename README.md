@@ -31,13 +31,7 @@ cd ~/.clawpilot && ./install.sh
 clawpilot
 ```
 
-### Optional dependencies
-
-| Tool | For | Install |
-|------|-----|---------|
-| `age` | Encrypted vault | `sudo apt install age` |
-| `sqlite3` | Memory database | `sudo apt install sqlite3` |
-| `jq` | Daemon handler | `sudo apt install jq` |
+Requires **Linux with systemd**. Optional: `sudo apt install sqlite3 age jq` for memory-db, vault, and daemon.
 
 ## Usage
 

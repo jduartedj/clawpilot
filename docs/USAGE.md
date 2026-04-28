@@ -23,16 +23,6 @@
 
 ## Installation
 
-### Prerequisites
-
-| Requirement | Required By | Install |
-|-------------|-------------|---------|
-| GitHub Copilot CLI | All extensions | `curl -fsSL https://gh.io/copilot-install \| bash` |
-| Linux + systemd | scheduler, heartbeat, daemon | Built into most Linux distros |
-| sqlite3 | memory-db | `sudo apt install sqlite3` |
-| age | vault | `sudo apt install age` |
-| jq | daemon | `sudo apt install jq` |
-
 ### Install Clawpilot
 
 ```bash
@@ -41,7 +31,27 @@ cd ~/.clawpilot
 ./install.sh
 ```
 
+The installer automatically:
+- Installs GitHub Copilot CLI if not found
+- Copies all 9 extensions to `~/.copilot/extensions/`
+- Creates state directories in `~/.clawpilot/`
+- Links the `clawpilot` launcher to `~/.local/bin/`
+- Reports any missing optional dependencies (sqlite3, age, jq)
+
 Then restart Copilot CLI or run `/clear`. All `clawpilot_*` tools become available.
+
+### Optional dependencies
+
+| Tool | For | Install |
+|------|-----|---------|
+| `sqlite3` | memory-db extension | `sudo apt install sqlite3` |
+| `age` | vault extension | `sudo apt install age` |
+| `jq` | daemon handler script | `sudo apt install jq` |
+
+### System requirements
+
+- **Linux with systemd** — required for scheduler, heartbeat, and daemon extensions
+- **Node.js 18+** — included with Copilot CLI
 
 ### Update
 
