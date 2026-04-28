@@ -1,4 +1,4 @@
-# Clawpilot CLI 🦞
+# Clawpilot CLI 🦞🤖
 
 > Autonomous superpowers for GitHub Copilot CLI — background sessions, scheduled tasks, proactive heartbeats, messaging, encrypted secrets, and more.
 
