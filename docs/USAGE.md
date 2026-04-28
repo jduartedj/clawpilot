@@ -94,6 +94,52 @@ Schedule background checks that report findings when you start a new session.
 
 ---
 
+## 📨 channels — Native Messaging
+
+Send and read messages on Telegram, Discord, and Slack — no external dependencies.
+
+```
+> Set up Telegram with my bot token
+> Send "deploy complete" to my Discord channel
+> Read last 5 Telegram messages
+```
+
+### Tools
+
+| Tool | Description |
+|------|-------------|
+| `clawpilot_channel_setup` | Configure a channel (token validation included) |
+| `clawpilot_send_message` | Send a message to any configured channel |
+| `clawpilot_read_messages` | Read recent messages |
+| `clawpilot_channel_status` | Show all configured channels with live status |
+| `clawpilot_channel_remove` | Remove a configured channel |
+
+### Setup
+
+**Telegram:**
+1. Message [@BotFather](https://t.me/BotFather) on Telegram → `/newbot` → copy the token
+2. `clawpilot_channel_setup(channel: "telegram", token: "123456:ABC...")`
+3. Send to a chat: `clawpilot_send_message(channel: "telegram", target: "<chat_id>", message: "hello")`
+
+**Discord:**
+1. Go to [Discord Developer Portal](https://discord.com/developers/applications) → New Application → Bot → copy token
+2. Invite bot to your server with message permissions
+3. `clawpilot_channel_setup(channel: "discord", token: "MTk...")`
+4. Send to a channel: `clawpilot_send_message(channel: "discord", target: "<channel_id>", message: "hello")`
+
+**Slack:**
+1. Create a [Slack App](https://api.slack.com/apps) → OAuth & Permissions → Bot Token
+2. Or create an [Incoming Webhook](https://api.slack.com/messaging/webhooks) URL
+3. `clawpilot_channel_setup(channel: "slack", token: "xoxb-..." or "https://hooks.slack.com/...")`
+
+### How it works
+- Pure `fetch()` calls to platform APIs — zero external dependencies
+- Tokens stored in `~/.clawpilot/channels/config.json`
+- Token validated on setup (Telegram `getMe`, Discord `/users/@me`)
+- Credentials never leave your machine
+
+---
+
 ## 🤖 daemon — Always-On Service
 
 A systemd path watcher that processes messages dropped into an inbox.

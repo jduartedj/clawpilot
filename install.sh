@@ -5,7 +5,7 @@ CLAWPILOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 COPILOT_EXT_DIR="${HOME}/.copilot/extensions"
 CLAWPILOT_STATE="${HOME}/.clawpilot"
 
-EXTENSIONS=(spawn scheduler heartbeat daemon orchestrator memory-db vault fallback)
+EXTENSIONS=(spawn scheduler heartbeat channels daemon orchestrator memory-db vault fallback)
 
 echo "🦞 Clawpilot CLI — Installing extensions"
 echo ""
@@ -39,15 +39,10 @@ for ext in "${EXTENSIONS[@]}"; do
         continue
     fi
 
-    # Create a wrapper extension that imports from the clawpilot repo
-    # This avoids symlink issues and allows clean updates
+    # Copy the extension file directly
+    # Updates require re-running install.sh
     mkdir -p "$dest_dir"
-    cat > "${dest_dir}/extension.mjs" << EOF
-// Clawpilot CLI — ${ext} extension
-// Auto-generated wrapper. Source: ${src}
-// Do not edit — run install.sh again after updates.
-import("${src}");
-EOF
+    cp "$src" "${dest_dir}/extension.mjs"
 
     echo "✅ ${ext} → ${dest_dir}"
     installed=$((installed + 1))

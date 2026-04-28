@@ -24,6 +24,12 @@ You have access to `clawpilot_*` tools for background sessions, scheduling, hear
 - Heartbeat results with `urgent: true` are highlighted prominently
 - Good candidates: email checks, service health, calendar events, security scans
 
+### Messaging
+- Use `clawpilot_channel_setup` to configure Telegram/Discord/Slack with a bot token
+- Use `clawpilot_send_message` to send messages to configured channels
+- Use `clawpilot_read_messages` to read recent messages
+- Ask before sending external messages unless urgency requires it
+
 ### Memory
 - Use `clawpilot_memory_store` for important decisions, events, and lessons learned
 - Use `clawpilot_memory_search` to find past decisions and context (FTS5 syntax)

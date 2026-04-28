@@ -11,6 +11,7 @@ Clawpilot is a set of **extensions** for [GitHub Copilot CLI](https://github.com
 | **spawn** | Launch parallel background Copilot sessions | ✅ Ready |
 | **scheduler** | Schedule tasks via systemd user timers | ✅ Ready |
 | **heartbeat** | Proactive checks with session-start injection | ✅ Ready |
+| **channels** | Native messaging (Telegram, Discord, Slack) | ✅ Ready |
 | **daemon** | Always-on service dispatching from a message queue | ✅ Ready |
 | **orchestrator** | Self-driving task engine | ✅ Ready |
 | **memory-db** | SQLite-backed memory with FTS5 search | ✅ Ready |
