@@ -10,6 +10,13 @@ EXTENSIONS=(spawn scheduler heartbeat channels daemon orchestrator memory-db vau
 echo "🦞 Clawpilot CLI — Installing extensions"
 echo ""
 
+# Non-interactive shells may not have the user's local bin directory on PATH.
+for p in "${HOME}/.local/bin/copilot" "/usr/local/bin/copilot"; do
+    if ! command -v copilot &>/dev/null && [ -x "$p" ]; then
+        export PATH="$(dirname "$p"):$PATH"
+    fi
+done
+
 # Check copilot is installed — auto-install if missing
 if ! command -v copilot &>/dev/null; then
     echo "📦 Copilot CLI not found — installing..."
