@@ -41,12 +41,14 @@ export async function processInbox() {
     for (const fileName of files) {
         const path = await claimFile(fileName);
         if (!path) continue;
+        let processed = false;
         try {
             let payload;
             payload = JSON.parse(await readFile(path, "utf8"));
 
             const prompt = String(payload.prompt || "");
             if (!prompt) {
+                processed = true;
                 await moveProcessed(path, fileName);
                 continue;
             }
@@ -68,7 +70,9 @@ export async function processInbox() {
         } catch (err) {
             console.error(`Failed to process daemon inbox file ${fileName}:`, err);
         } finally {
-            await moveProcessed(path, fileName);
+            if (!processed) {
+                await moveProcessed(path, fileName);
+            }
         }
     }
 }
