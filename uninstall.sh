@@ -22,6 +22,15 @@ done
 echo ""
 echo "Removed ${removed} extensions."
 echo ""
+
+# Remove launcher
+BIN_LINK="${HOME}/.local/bin/clawpilot"
+if [ -L "$BIN_LINK" ]; then
+    rm "$BIN_LINK"
+    echo "🗑️  Removed launcher: ${BIN_LINK}"
+fi
+
+echo ""
 echo "State directory preserved at: ${CLAWPILOT_STATE}"
 echo "To remove state: rm -rf ${CLAWPILOT_STATE}"
 echo ""

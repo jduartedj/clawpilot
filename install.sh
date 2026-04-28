@@ -51,5 +51,23 @@ done
 echo ""
 echo "🦞 Installed ${installed} extensions (${skipped} skipped)"
 echo ""
+
+# Install clawpilot launcher
+LAUNCHER="${CLAWPILOT_DIR}/clawpilot.sh"
+BIN_DIR="${HOME}/.local/bin"
+if [ -f "$LAUNCHER" ]; then
+    mkdir -p "$BIN_DIR"
+    ln -sf "$LAUNCHER" "${BIN_DIR}/clawpilot"
+    echo "✅ Launcher: ${BIN_DIR}/clawpilot"
+    if ! echo "$PATH" | grep -q "${BIN_DIR}"; then
+        echo "   ℹ️  Add to PATH: export PATH=\"${BIN_DIR}:\$PATH\""
+    fi
+fi
+
+echo ""
 echo "Restart Copilot CLI or run /clear to load extensions."
 echo "State directory: ${CLAWPILOT_STATE}"
+echo ""
+echo "Usage:"
+echo "  copilot          # Normal Copilot CLI (new session each time)"
+echo "  clawpilot        # Always resumes 'main' session (persistent)"

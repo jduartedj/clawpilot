@@ -56,6 +56,19 @@ cd ~/.clawpilot && ./uninstall.sh
 # Optionally remove state: rm -rf ~/.clawpilot
 ```
 
+### The `clawpilot` Command
+
+After install, you get a `clawpilot` command (in `~/.local/bin/`):
+
+```bash
+clawpilot              # Resume your "main" session (picks up where you left off)
+clawpilot --autopilot  # Resume in autopilot mode
+clawpilot --model X    # Resume with model override
+copilot                # Normal Copilot CLI (starts a new session)
+```
+
+The `clawpilot` command wraps `copilot --resume="main"` so you always return to the same persistent session. First run creates it; every subsequent run resumes it with full conversation history.
+
 ---
 
 ## ⚠️ Important: Spawn Long Tasks

@@ -92,7 +92,15 @@ cd ~/.clawpilot
 
 ## Usage
 
-Once installed, Copilot CLI gains new tools. Just ask naturally:
+**Use `clawpilot` instead of `copilot` to always resume your "main" session:**
+
+```bash
+clawpilot              # Resume where you left off (or start "main" session)
+clawpilot --autopilot  # Resume in autopilot mode
+copilot                # Normal Copilot CLI (new session each time)
+```
+
+Once running, Copilot CLI gains new tools. Just ask naturally:
 
 ```
 > Spawn a background session to refactor the auth module
