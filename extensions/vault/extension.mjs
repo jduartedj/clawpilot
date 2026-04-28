@@ -123,7 +123,12 @@ const session = await joinSession({
                 await ensureKey();
                 const path = secretPath(args.key);
 
-                const result = await exec("age", ["-d", "-i", KEY_FILE, path]);
+                // Use raw exec (no trim) to preserve secret whitespace/newlines
+                const result = await new Promise((resolve) => {
+                    execFile("age", ["-d", "-i", KEY_FILE, path], { timeout: 10000 }, (err, stdout, stderr) => {
+                        resolve({ ok: !err, stdout: stdout || "", stderr: stderr?.trim() || "" });
+                    });
+                });
                 if (!result.ok) {
                     return { textResultForLlm: `Decryption failed: ${result.stderr}. Does '${args.key}' exist?`, resultType: "failure" };
                 }

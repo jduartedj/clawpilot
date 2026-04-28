@@ -26,16 +26,17 @@ function unitName(name) {
     return `clawpilot-${name.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
 }
 
-function buildServiceUnit(name, cwd) {
+function buildServiceUnit(name, cwd, model) {
     // Prompt is stored in a separate file, not inline in the unit
     const promptFile = join(STATE_DIR, `${name}.prompt`);
+    const modelArg = model ? ` --model "${model.replace(/[\r\n"]/g, "")}"` : "";
     return `[Unit]
 Description=Clawpilot scheduled task: ${name.replace(/[\r\n]/g, "")}
 
 [Service]
 Type=oneshot
 WorkingDirectory=${cwd.replace(/[\r\n]/g, "")}
-ExecStart=/bin/bash -c 'exec ${COPILOT_BIN} -p "$$(cat "${promptFile}")" --allow-all --autopilot --silent --no-ask-user --name "sched-${name.replace(/[\r\n"]/g, "")}"'
+ExecStart=/bin/bash -c 'exec ${COPILOT_BIN} -p "$$(cat "${promptFile}")" --allow-all --autopilot --silent --no-ask-user --name "sched-${name.replace(/[\r\n"]/g, "")}"${modelArg}'
 Environment=HOME=${homedir()}
 Environment=PATH=${process.env.PATH}
 StandardOutput=journal
@@ -98,7 +99,7 @@ const session = await joinSession({
                 // Write service unit
                 await writeFile(
                     join(SYSTEMD_DIR, `${unit}.service`),
-                    buildServiceUnit(name, cwd)
+                    buildServiceUnit(name, cwd, args.model)
                 );
 
                 // Write timer unit

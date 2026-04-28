@@ -59,9 +59,10 @@ if [ ${#MISSING_OPTIONAL[@]} -gt 0 ]; then
     echo "   Install with: sudo apt install sqlite3 age jq"
 fi
 
-# Create state directories
-mkdir -p "${CLAWPILOT_STATE}"/{spawned,heartbeat,vault,logs}
-echo "✅ State directory: ${CLAWPILOT_STATE}"
+# Create state directories with restrictive permissions
+mkdir -p "${CLAWPILOT_STATE}"/{spawned,heartbeat,vault,logs,scheduler,channels,orchestrator,inbox,processed,history}
+chmod 700 "${CLAWPILOT_STATE}" "${CLAWPILOT_STATE}"/{spawned,heartbeat,vault,logs,scheduler,channels,orchestrator,inbox,processed,history}
+echo "✅ State directory: ${CLAWPILOT_STATE} (0700)"
 
 # Create copilot extensions directory if needed
 mkdir -p "${COPILOT_EXT_DIR}"

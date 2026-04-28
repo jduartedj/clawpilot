@@ -44,6 +44,7 @@ Description=Clawpilot inbox handler
 
 [Service]
 Type=oneshot
+KillMode=process
 ExecStart=${join(homedir(), ".clawpilot", "daemon-handler.sh")}
 Environment=HOME=${homedir()}
 Environment=PATH=${process.env.PATH}

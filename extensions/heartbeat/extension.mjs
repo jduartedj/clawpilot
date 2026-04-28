@@ -225,7 +225,7 @@ const session = await joinSession({
                 let cleared = 0;
                 for (const f of files) {
                     if (!f.endsWith(".json")) continue;
-                    if (args.name && !f.startsWith(args.name)) continue;
+                    if (args.name && !f.startsWith(args.name + "-")) continue;
                     try { const { unlink } = await import("node:fs/promises"); await unlink(join(RESULTS_DIR, f)); cleared++; } catch { /* ok */ }
                 }
                 return `Cleared ${cleared} heartbeat result(s).`;

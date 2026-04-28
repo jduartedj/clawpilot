@@ -15,7 +15,7 @@ for ext in "${EXTENSIONS[@]}"; do
     if [ -d "$dest_dir" ]; then
         rm -rf "$dest_dir"
         echo "🗑️  Removed clawpilot-${ext}"
-        ((removed++))
+        removed=$((removed + 1))
     fi
 done
 

@@ -153,12 +153,12 @@ const session = await joinSession({
                     `3. When done, write a summary of what you accomplished\n` +
                     `4. Do NOT ask for user input — work autonomously`;
 
-                // We return the prompt — the user/scheduler should use clawpilot_spawn to launch it
-                state.status = "running";
+                // Don't set "running" — this handler only generates the prompt,
+                // it doesn't spawn anything. The LLM or scheduler does the actual spawn.
                 state.currentTask = {
                     name: "auto-selected",
                     prompt: prompt.slice(0, 500),
-                    startedAt: new Date().toISOString(),
+                    generatedAt: new Date().toISOString(),
                 };
                 await saveState(state);
 

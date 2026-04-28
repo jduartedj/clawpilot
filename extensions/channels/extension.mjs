@@ -58,20 +58,21 @@ async function telegramRead(token, chatId, limit = 10, config = null) {
     const data = await res.json();
     if (!data.ok) throw new Error(data.description || "Telegram read failed");
 
-    // Track highest update_id for next call
+    // Advance offset over ALL updates (not just filtered ones) to acknowledge them
     let maxId = offset;
+    for (const u of data.result) {
+        if (u.update_id >= maxId) maxId = u.update_id + 1;
+    }
+
     const messages = data.result
         .filter((u) => u.message && (!chatId || String(u.message.chat.id) === String(chatId)))
-        .map((u) => {
-            if (u.update_id >= maxId) maxId = u.update_id + 1;
-            return {
-                id: u.message.message_id,
-                from: u.message.from?.first_name || u.message.from?.username || "unknown",
-                chat: u.message.chat.title || u.message.chat.id,
-                text: u.message.text || "(media)",
-                date: new Date(u.message.date * 1000).toISOString(),
-            };
-        });
+        .map((u) => ({
+            id: u.message.message_id,
+            from: u.message.from?.first_name || u.message.from?.username || "unknown",
+            chat: u.message.chat.title || u.message.chat.id,
+            text: u.message.text || "(media)",
+            date: new Date(u.message.date * 1000).toISOString(),
+        }));
 
     // Persist offset
     if (config && maxId > offset) {
