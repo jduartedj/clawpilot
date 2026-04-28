@@ -86,7 +86,7 @@ Once running, just ask naturally:
 - **OpenClaw agent sync** — imports OpenClaw agent config + safe `agentDir`/workspace definition files into Copilot custom agents on startup
 - **No npm dependencies** — all extensions use Node.js built-ins only
 - **Security reviewed** — prompts stored in files (not systemd units), vault uses age encryption with `0700`/`0600` permissions, tokens validated on setup
-- **Linux-first** — systemd for scheduling/daemon; macOS support planned
+- **Linux-first, cross-platform planned** — see the Linux refactor, Windows, and macOS plans below
 
 ## Update
 
@@ -104,6 +104,9 @@ cd ~/.clawpilot && ./uninstall.sh
 
 - **[Usage Guide](docs/USAGE.md)** — complete reference for all 37 tools
 - **[Custom Instructions](docs/INSTRUCTIONS.md)** — add to `.github/copilot-instructions.md`
+- **[Linux Refactor Plan](docs/PLAN-LINUX-REFACTOR.md)** — platform abstraction work before Windows/macOS
+- **[Windows Implementation Plan](docs/PLAN-WINDOWS-IMPLEMENTATION.md)** — Task Scheduler and PowerShell support
+- **[macOS Implementation Plan](docs/PLAN-MACOS-IMPLEMENTATION.md)** — launchd and LaunchAgent support
 
 ## License
 
