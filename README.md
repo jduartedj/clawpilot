@@ -1,45 +1,92 @@
-# Clawpilot CLI
+# Clawpilot CLI 🦞
 
-> OpenClaw-grade superpowers for GitHub Copilot CLI — background sessions, scheduled tasks, proactive heartbeats, multi-channel messaging, and more.
+> Autonomous superpowers for GitHub Copilot CLI — background sessions, scheduled tasks, proactive heartbeats, messaging, encrypted secrets, and more.
 
-Clawpilot is a set of **extensions** for [GitHub Copilot CLI](https://github.com/github/copilot-cli) that add autonomous, always-on capabilities. Copilot CLI stays untouched and updates independently — Clawpilot layers on top.
+Clawpilot is a set of **extensions** for [GitHub Copilot CLI](https://github.com/github/copilot-cli) that add always-on, autonomous capabilities. Copilot CLI stays untouched and updates independently — Clawpilot layers on top.
 
 ## Features
 
 | Extension | What It Does | Status |
 |-----------|-------------|--------|
-| **spawn** | Launch parallel background Copilot sessions | ✅ Ready |
-| **scheduler** | Schedule tasks via systemd user timers | ✅ Ready |
-| **heartbeat** | Proactive checks with session-start injection | ✅ Ready |
-| **channels** | Native messaging (Telegram, Discord, Slack) | ✅ Ready |
-| **daemon** | Always-on service dispatching from a message queue | ✅ Ready |
-| **orchestrator** | Self-driving task engine | ✅ Ready |
-| **memory-db** | SQLite-backed memory with FTS5 search | ✅ Ready |
-| **vault** | age-encrypted local secrets | ✅ Ready |
-| **fallback** | Multi-model fallback on errors | ✅ Ready |
+| **spawn** | Launch parallel background sessions + auto-resume on exit | ✅ |
+| **scheduler** | Schedule recurring tasks via systemd user timers | ✅ |
+| **heartbeat** | Proactive checks with session-start notification injection | ✅ |
+| **channels** | Native messaging (Telegram, Discord, Slack) | ✅ |
+| **daemon** | Always-on systemd service dispatching from an inbox queue | ✅ |
+| **orchestrator** | Self-driving task engine (reads ORCHESTRATION.md/ROADMAP.md) | ✅ |
+| **memory-db** | SQLite memory store with FTS5 full-text search | ✅ |
+| **vault** | age-encrypted local secrets with rotation tracking | ✅ |
+| **fallback** | Automatic retry on model errors | ✅ |
 
-## Prerequisites
+**37 tools** total. Zero external dependencies — pure Node.js built-ins + system utilities.
 
-- [GitHub Copilot CLI](https://github.com/github/copilot-cli) (any version)
-- Linux with systemd (for scheduler/heartbeat)
-- Node.js 18+ (Copilot CLI includes this)
-
-## Install
+## Quick Start
 
 ```bash
+# Install
 git clone https://github.com/jduartedj/clawpilot.git ~/.clawpilot
-cd ~/.clawpilot
-./install.sh
+cd ~/.clawpilot && ./install.sh
+
+# Use (always resumes your "main" session)
+clawpilot
 ```
 
-Then restart Copilot CLI (or run `/clear`). Extensions load automatically.
+### Optional dependencies
 
-### Vault Setup (optional)
+| Tool | For | Install |
+|------|-----|---------|
+| `age` | Encrypted vault | `sudo apt install age` |
+| `sqlite3` | Memory database | `sudo apt install sqlite3` |
+| `jq` | Daemon handler | `sudo apt install jq` |
+
+## Usage
 
 ```bash
-# Install age for encrypted secrets
-sudo apt install age
+clawpilot              # Resume your persistent "main" session
+clawpilot --autopilot  # Resume in autopilot mode
+copilot                # Normal Copilot CLI (new session each time)
 ```
+
+Once running, just ask naturally:
+
+```
+> Spawn a background session to refactor the auth module
+> Schedule a daily code review at 8am
+> Add a heartbeat to check my email every hour
+> Send "deploy complete" to my Telegram chat
+> Store my API key in the vault
+> Search memory for "trading bot decisions"
+```
+
+📖 **[Full Usage Guide →](docs/USAGE.md)** — all 37 tools with parameters, examples, and setup guides.
+
+## How It Works
+
+```
+┌─────────────────────────────────────────┐
+│  GitHub Copilot CLI                     │ ← Untouched, updates independently
+│  (proprietary, any version)             │
+├─────────────────────────────────────────┤
+│  Clawpilot Extensions (9)               │ ← ~/.copilot/extensions/
+│  spawn · scheduler · heartbeat          │
+│  channels · daemon · orchestrator       │
+│  memory-db · vault · fallback           │
+├─────────────────────────────────────────┤
+│  Clawpilot State                        │ ← ~/.clawpilot/
+│  spawned/ · heartbeat/ · vault/         │
+│  scheduler/ · inbox/ · memory.db        │
+└─────────────────────────────────────────┘
+```
+
+### Key design decisions
+
+- **Copilot CLI is a prerequisite**, not bundled — `copilot update` works independently
+- **State isolated** in `~/.clawpilot/` — zero coupling with `~/.copilot/` internals
+- **Auto-resume** — quit mid-task and work continues in background; on return, results are handed back seamlessly
+- **Persistent session** — `clawpilot` command always resumes your "main" session
+- **No npm dependencies** — all extensions use Node.js built-ins only
+- **Security reviewed** — prompts stored in files (not systemd units), vault uses age encryption with `0700`/`0600` permissions, tokens validated on setup
+- **Linux-first** — systemd for scheduling/daemon; macOS support planned
 
 ## Update
 
@@ -47,73 +94,16 @@ sudo apt install age
 cd ~/.clawpilot && git pull && ./install.sh
 ```
 
-Re-run `install.sh` after pulling to copy updated extension files. Restart Copilot CLI to reload.
-
 ## Uninstall
 
 ```bash
-cd ~/.clawpilot
-./uninstall.sh
+cd ~/.clawpilot && ./uninstall.sh
 ```
 
-## Architecture
+## Docs
 
-```
-┌─────────────────────────────────┐
-│  GitHub Copilot CLI             │  ← Untouched, updates independently
-│  (proprietary, any version)     │
-├─────────────────────────────────┤
-│  Clawpilot Extensions           │  ← User-level extensions in ~/.copilot/extensions/
-│  ┌──────┐ ┌─────────┐ ┌──────┐ │
-│  │spawn │ │scheduler│ │heart-│ │
-│  │      │ │         │ │beat  │ │
-│  └──────┘ └─────────┘ └──────┘ │
-│  ┌──────┐ ┌──────┐ ┌────────┐  │
-│  │chan- │ │vault │ │memory- │  │
-│  │nels  │ │      │ │db      │  │
-│  └──────┘ └──────┘ └────────┘  │
-├─────────────────────────────────┤
-│  Clawpilot State                │
-│  ~/.clawpilot/                  │
-│  ├── spawned/     (bg sessions) │
-│  ├── heartbeat/   (check results│)
-│  ├── vault/       (encrypted)   │
-│  └── memory.db    (SQLite)      │
-└─────────────────────────────────┘
-```
-
-**Key design decisions:**
-- Copilot CLI is a prerequisite, not bundled — install/update separately
-- State lives in `~/.clawpilot/`, not `~/.copilot/` (no coupling)
-- All tool names prefixed with `clawpilot_` to avoid collisions
-- Extensions use Node.js built-ins only (no npm dependencies)
-- **Auto-resume:** quit mid-task and the interrupted work continues in the background — on return, results are handed back seamlessly
-- Linux-first (systemd for scheduling), macOS support planned
-
-## Usage
-
-**Use `clawpilot` instead of `copilot` to always resume your "main" session:**
-
-```bash
-clawpilot              # Resume where you left off (or start "main" session)
-clawpilot --autopilot  # Resume in autopilot mode
-copilot                # Normal Copilot CLI (new session each time)
-```
-
-Once running, Copilot CLI gains new tools. Just ask naturally:
-
-```
-> Spawn a background session to refactor the auth module
-> Schedule a daily code review at 8am
-> Check what happened while I was away (heartbeat results)
-> Send "build complete" to my Telegram chat
-> Store my API key in the vault
-> Search memory for "trading bot decisions"
-```
-
-See [docs/USAGE.md](docs/USAGE.md) for the complete guide with all tools, parameters, and examples.
-
-See [docs/INSTRUCTIONS.md](docs/INSTRUCTIONS.md) for custom instructions to add to your project.
+- **[Usage Guide](docs/USAGE.md)** — complete reference for all 37 tools
+- **[Custom Instructions](docs/INSTRUCTIONS.md)** — add to `.github/copilot-instructions.md`
 
 ## License
 
