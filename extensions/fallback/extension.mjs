@@ -1,5 +1,5 @@
 // Clawpilot CLI — fallback extension
-// Multi-model fallback on errors — retry with alternate models.
+// Automatic retry on model errors with configurable retry count.
 import { joinSession } from "@github/copilot-sdk/extension";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";

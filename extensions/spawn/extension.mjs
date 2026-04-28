@@ -104,11 +104,16 @@ const session = await joinSession({
                     env: { ...process.env },
                 });
 
-                // Pipe output to log file
-                const { createWriteStream } = await import("node:fs");
+                // Write output to log using file descriptors (not pipes)
+                // so the child survives parent exit without SIGPIPE
+                const { openSync, closeSync, createWriteStream } = await import("node:fs");
                 const logStream = createWriteStream(logPath, { flags: "w" });
                 child.stdout.pipe(logStream);
                 child.stderr.pipe(logStream);
+                // Ignore pipe errors so parent can exit cleanly
+                child.stdout.on("error", () => {});
+                child.stderr.on("error", () => {});
+                logStream.on("error", () => {});
                 child.unref();
 
                 const meta = {
@@ -251,15 +256,20 @@ const session = await joinSession({
             },
             handler: async (args) => {
                 await ensureDir(SPAWNED_DIR);
-                const entries = args.name ? [args.name] : await readdir(SPAWNED_DIR);
+                const sanitize = (n) => n.replace(/[^a-zA-Z0-9_-]/g, "-");
+                const entries = args.name ? [sanitize(args.name)] : await readdir(SPAWNED_DIR);
                 let cleaned = 0;
 
                 for (const name of entries) {
+                    // Verify path stays inside SPAWNED_DIR
+                    const target = resolve(SPAWNED_DIR, name);
+                    if (!target.startsWith(resolve(SPAWNED_DIR) + "/")) continue;
+
                     const meta = await getMeta(name);
                     if (!meta) continue;
                     if (meta.status === "running" && isProcessRunning(meta.pid)) continue;
 
-                    await rm(join(SPAWNED_DIR, name), { recursive: true, force: true });
+                    await rm(target, { recursive: true, force: true });
                     cleaned++;
                 }
 

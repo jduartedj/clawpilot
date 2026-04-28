@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 
 const INBOX_DIR = join(homedir(), ".clawpilot", "inbox");
-const PROCESSED_DIR = join(homedir(), ".clawpilot", "inbox", "processed");
+const PROCESSED_DIR = join(homedir(), ".clawpilot", "processed");
 const DAEMON_STATE = join(homedir(), ".clawpilot", "daemon-state.json");
 const SYSTEMD_DIR = join(homedir(), ".config", "systemd", "user");
 const DAEMON_UNIT = "clawpilot-daemon";

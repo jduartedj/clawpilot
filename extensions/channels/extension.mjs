@@ -10,20 +10,23 @@ const CONFIG_DIR = join(homedir(), ".clawpilot", "channels");
 const CONFIG_FILE = join(CONFIG_DIR, "config.json");
 
 async function ensureDir(dir) {
-    await mkdir(dir, { recursive: true });
+    await mkdir(dir, { recursive: true, mode: 0o700 });
 }
 
 async function loadConfig() {
     try {
         return JSON.parse(await readFile(CONFIG_FILE, "utf-8"));
     } catch {
-        return { channels: {} };
+        return { channels: {}, state: {} };
     }
 }
 
 async function saveConfig(config) {
     await ensureDir(CONFIG_DIR);
-    await writeFile(CONFIG_FILE, JSON.stringify(config, null, 2));
+    const { chmod } = await import("node:fs/promises");
+    await writeFile(CONFIG_FILE, JSON.stringify(config, null, 2), { mode: 0o600 });
+    try { await chmod(CONFIG_FILE, 0o600); } catch { /* ok */ }
+    try { await chmod(CONFIG_DIR, 0o700); } catch { /* ok */ }
 }
 
 // --- Telegram ---
@@ -47,20 +50,35 @@ async function telegramSend(token, chatId, message, opts = {}) {
     return data.result;
 }
 
-async function telegramRead(token, chatId, limit = 10) {
-    const res = await fetch(`https://api.telegram.org/bot${token}/getUpdates?limit=${limit}&allowed_updates=["message"]`);
+async function telegramRead(token, chatId, limit = 10, config = null) {
+    // Use offset to avoid returning same messages repeatedly
+    const offset = config?.state?.telegramOffset || 0;
+    const url = `https://api.telegram.org/bot${token}/getUpdates?limit=${limit}&allowed_updates=["message"]${offset ? `&offset=${offset}` : ""}`;
+    const res = await fetch(url);
     const data = await res.json();
     if (!data.ok) throw new Error(data.description || "Telegram read failed");
 
+    // Track highest update_id for next call
+    let maxId = offset;
     const messages = data.result
         .filter((u) => u.message && (!chatId || String(u.message.chat.id) === String(chatId)))
-        .map((u) => ({
-            id: u.message.message_id,
-            from: u.message.from?.first_name || u.message.from?.username || "unknown",
-            chat: u.message.chat.title || u.message.chat.id,
-            text: u.message.text || "(media)",
-            date: new Date(u.message.date * 1000).toISOString(),
-        }));
+        .map((u) => {
+            if (u.update_id >= maxId) maxId = u.update_id + 1;
+            return {
+                id: u.message.message_id,
+                from: u.message.from?.first_name || u.message.from?.username || "unknown",
+                chat: u.message.chat.title || u.message.chat.id,
+                text: u.message.text || "(media)",
+                date: new Date(u.message.date * 1000).toISOString(),
+            };
+        });
+
+    // Persist offset
+    if (config && maxId > offset) {
+        if (!config.state) config.state = {};
+        config.state.telegramOffset = maxId;
+        await saveConfig(config);
+    }
 
     return messages;
 }
@@ -243,7 +261,7 @@ const session = await joinSession({
                     let messages;
                     switch (channel) {
                         case "telegram":
-                            messages = await telegramRead(ch.token, args.target, count);
+                            messages = await telegramRead(ch.token, args.target, count, config);
                             break;
                         case "discord":
                             if (!args.target) return { textResultForLlm: "Discord requires a channel_id as target.", resultType: "failure" };

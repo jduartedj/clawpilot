@@ -26,26 +26,16 @@ function unitName(name) {
     return `clawpilot-${name.replace(/[^a-zA-Z0-9_-]/g, "-")}`;
 }
 
-function buildServiceUnit(name, prompt, cwd, model) {
-    const copilotArgs = [
-        "-p", prompt,
-        "--allow-all",
-        "--autopilot",
-        "--name", `sched-${name}`,
-        "--silent",
-        "--no-ask-user",
-    ];
-    if (model) copilotArgs.push("--model", model);
-
-    const escapedArgs = copilotArgs.map((a) => `'${a.replace(/'/g, "'\\''")}'`).join(" ");
-
+function buildServiceUnit(name, cwd) {
+    // Prompt is stored in a separate file, not inline in the unit
+    const promptFile = join(STATE_DIR, `${name}.prompt`);
     return `[Unit]
-Description=Clawpilot scheduled task: ${name}
+Description=Clawpilot scheduled task: ${name.replace(/[\r\n]/g, "")}
 
 [Service]
 Type=oneshot
-WorkingDirectory=${cwd}
-ExecStart=${COPILOT_BIN} ${escapedArgs}
+WorkingDirectory=${cwd.replace(/[\r\n]/g, "")}
+ExecStart=/bin/bash -c 'exec ${COPILOT_BIN} -p "$$(cat "${promptFile}")" --allow-all --autopilot --silent --no-ask-user --name "sched-${name.replace(/[\r\n"]/g, "")}"'
 Environment=HOME=${homedir()}
 Environment=PATH=${process.env.PATH}
 StandardOutput=journal
@@ -55,10 +45,10 @@ StandardError=journal
 
 function buildTimerUnit(name, schedule) {
     return `[Unit]
-Description=Clawpilot timer: ${name}
+Description=Clawpilot timer: ${name.replace(/[\r\n]/g, "")}
 
 [Timer]
-OnCalendar=${schedule}
+OnCalendar=${schedule.replace(/[\r\n]/g, "")}
 Persistent=true
 RandomizedDelaySec=30
 
@@ -97,10 +87,18 @@ const session = await joinSession({
                 await ensureDir(SYSTEMD_DIR);
                 await ensureDir(STATE_DIR);
 
+                if (/[\r\n]/.test(args.schedule)) {
+                    return { textResultForLlm: "Schedule must not contain newlines.", resultType: "failure" };
+                }
+
+                // Write prompt to a separate file (not inline in unit)
+                const promptFile = join(STATE_DIR, `${name}.prompt`);
+                await writeFile(promptFile, args.prompt, { mode: 0o600 });
+
                 // Write service unit
                 await writeFile(
                     join(SYSTEMD_DIR, `${unit}.service`),
-                    buildServiceUnit(name, args.prompt, cwd, args.model)
+                    buildServiceUnit(name, cwd)
                 );
 
                 // Write timer unit

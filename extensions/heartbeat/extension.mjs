@@ -57,23 +57,26 @@ function unitName(name) {
 // Heartbeat scheduled tasks write their results to a file.
 // The prompt includes instructions to write results to the results dir.
 function buildHeartbeatPrompt(name, userPrompt) {
+    // Use a dynamic filename pattern — the LLM will substitute the actual timestamp
     return (
         `${userPrompt}\n\n` +
         `IMPORTANT: After completing the check, write a brief JSON summary of your findings to ` +
-        `${join(RESULTS_DIR, name + "-" + Date.now() + ".json")} with this structure: ` +
-        `{"name":"${name}","timestamp":"<ISO>","summary":"<1-2 sentence summary>","urgent":true/false,"details":"<details>"}`
+        `${RESULTS_DIR}/${name}-TIMESTAMP.json (replace TIMESTAMP with the current unix timestamp) ` +
+        `with this structure: ` +
+        `{"name":"${name}","timestamp":"<ISO date>","summary":"<1-2 sentence summary>","urgent":true/false,"details":"<details>"}`
     );
 }
 
 function buildServiceUnit(name, prompt) {
-    const escapedPrompt = prompt.replace(/'/g, "'\\''");
+    // Store prompt in a file, not inline in the unit
+    const promptFile = join(homedir(), ".clawpilot", "heartbeat", `${name}.prompt`);
     return `[Unit]
-Description=Clawpilot heartbeat: ${name}
+Description=Clawpilot heartbeat: ${name.replace(/[\r\n]/g, "")}
 
 [Service]
 Type=oneshot
 WorkingDirectory=${homedir()}
-ExecStart=copilot -p '${escapedPrompt}' --allow-all --autopilot --silent --no-ask-user --name 'hb-${name}'
+ExecStart=/bin/bash -c 'exec copilot -p "$$(cat "${promptFile}")" --allow-all --autopilot --silent --no-ask-user --name "hb-${name.replace(/[\r\n"]/g, "")}"'
 Environment=HOME=${homedir()}
 Environment=PATH=${process.env.PATH}
 StandardOutput=journal
@@ -118,11 +121,19 @@ const session = await joinSession({
                     return { textResultForLlm: `Heartbeat '${name}' already exists. Remove it first.`, resultType: "failure" };
                 }
 
+                if (/[\r\n]/.test(args.schedule)) {
+                    return { textResultForLlm: "Schedule must not contain newlines.", resultType: "failure" };
+                }
+
                 await ensureDir(RESULTS_DIR);
                 await ensureDir(SYSTEMD_DIR);
 
                 const fullPrompt = buildHeartbeatPrompt(name, args.prompt);
                 const unit = unitName(name);
+
+                // Write prompt to file (not inline in unit)
+                const promptFile = join(HEARTBEAT_DIR, `${name}.prompt`);
+                await writeFile(promptFile, fullPrompt, { mode: 0o600 });
 
                 await writeFile(join(SYSTEMD_DIR, `${unit}.service`), buildServiceUnit(name, fullPrompt));
                 await writeFile(join(SYSTEMD_DIR, `${unit}.timer`), buildTimerUnit(name, args.schedule));

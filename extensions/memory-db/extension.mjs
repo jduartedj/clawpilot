@@ -82,14 +82,17 @@ const session = await joinSession({
             },
             handler: async (args) => {
                 await ensureSchema();
-                const limit = args.limit || 20;
+                const limit = Math.max(1, Math.min(100, parseInt(args.limit, 10) || 20));
                 const escaped = args.query.replace(/'/g, "''");
                 const result = await sqliteExec([
                     "-json",
                     DB_PATH,
                     `SELECT m.id, m.date, m.source, substr(m.content, 1, 500) as content, m.tags FROM memories m JOIN memory_fts f ON m.id = f.rowid WHERE memory_fts MATCH '${escaped}' ORDER BY rank LIMIT ${limit};`,
                 ]);
-                if (!result.ok || !result.stdout) return "No results found.";
+                if (!result.ok || !result.stdout) {
+                    if (result.stderr) return `Search error: ${result.stderr}`;
+                    return "No results found.";
+                }
                 return result.stdout;
             },
         },
@@ -123,9 +126,11 @@ const session = await joinSession({
                         if (!content.trim()) continue;
 
                         const escaped = content.replace(/'/g, "''");
-                        await sqlite(
-                            `INSERT INTO memories (date, source, content, tags) VALUES ('${date}', '${f}', '${escaped}', 'daily-memory');`
+                        const escapedFile = f.replace(/'/g, "''");
+                        const result = await sqlite(
+                            `INSERT INTO memories (date, source, content, tags) VALUES ('${date}', '${escapedFile}', '${escaped}', 'daily-memory');`
                         );
+                        if (!result.ok) continue; // surface failures instead of silent skip
                         await unlink(filePath);
                         rotated++;
                     } catch { /* skip on error */ }
@@ -146,8 +151,8 @@ const session = await joinSession({
             },
             handler: async (args) => {
                 await ensureSchema();
-                const days = args.days || 30;
-                const limit = args.limit || 20;
+                const days = Math.max(1, Math.min(3650, parseInt(args.days, 10) || 30));
+                const limit = Math.max(1, Math.min(100, parseInt(args.limit, 10) || 20));
                 const result = await sqliteExec([
                     "-json",
                     DB_PATH,
@@ -172,6 +177,9 @@ const session = await joinSession({
             handler: async (args) => {
                 await ensureSchema();
                 const date = args.date || new Date().toISOString().slice(0, 10);
+                if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+                    return { textResultForLlm: "Date must be YYYY-MM-DD format.", resultType: "failure" };
+                }
                 const escaped = args.content.replace(/'/g, "''");
                 const tags = (args.tags || "manual").replace(/'/g, "''");
                 const result = await sqlite(

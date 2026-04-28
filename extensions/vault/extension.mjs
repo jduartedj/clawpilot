@@ -12,6 +12,8 @@ const ROTATION_LOG = join(VAULT_DIR, ".rotation.json");
 
 async function ensureDir(dir) {
     await mkdir(dir, { recursive: true, mode: 0o700 });
+    const { chmod } = await import("node:fs/promises");
+    try { await chmod(dir, 0o700); } catch { /* ok */ }
 }
 
 function exec(cmd, args, opts = {}) {
@@ -24,15 +26,22 @@ function exec(cmd, args, opts = {}) {
 
 async function ensureKey() {
     await ensureDir(VAULT_DIR);
+    // Check both binaries exist
+    const ageCheck = await exec("which", ["age"]);
+    const keygenCheck = await exec("which", ["age-keygen"]);
+    if (!ageCheck.ok || !keygenCheck.ok) {
+        throw new Error("age not installed. Install: sudo apt install age");
+    }
     try {
         await stat(KEY_FILE);
+        // Enforce permissions on existing key
+        const { chmod } = await import("node:fs/promises");
+        await chmod(KEY_FILE, 0o600);
     } catch {
-        // Generate a new age key
         const result = await exec("age-keygen", ["-o", KEY_FILE]);
         if (!result.ok) {
             throw new Error(`Failed to generate age key: ${result.stderr}. Install age: apt install age`);
         }
-        // Restrict permissions
         const { chmod } = await import("node:fs/promises");
         await chmod(KEY_FILE, 0o600);
     }
@@ -57,7 +66,7 @@ async function loadRotationLog() {
 }
 
 async function saveRotationLog(log) {
-    await writeFile(ROTATION_LOG, JSON.stringify(log, null, 2));
+    await writeFile(ROTATION_LOG, JSON.stringify(log, null, 2), { mode: 0o600 });
 }
 
 const session = await joinSession({
