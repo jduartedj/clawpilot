@@ -103,6 +103,8 @@ The sync is timestamp-aware:
 
 Imported agents keep the OpenClaw persona text, map supported models where possible, and include a safety note that OpenClaw instructions about spawning/invoking Copilot CLI should be ignored because the agent is already running inside Copilot CLI.
 
+Already-running Copilot CLI sessions may need `/clear` or a restart before newly imported agents appear in the available custom-agent list.
+
 ---
 
 ## ⚠️ Important: Spawn Long Tasks
