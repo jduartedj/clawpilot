@@ -6,6 +6,7 @@ import { readJsonFile } from "./fs.mjs";
 import { gatewayRpcEnvelope } from "./gateway-router.mjs";
 import { GATEWAY_DIR, GATEWAY_RUNTIME_DIR, GATEWAY_SESSIONS_DIR, HOME } from "./platform.mjs";
 import { ensureGatewayDir, sessionPaths, readJsonl } from "./gateway-session.mjs";
+import { initializeGatewayNodes, registerGatewayNode, releaseGatewayNodeReservation, reserveGatewayNodeConnect, unregisterGatewayNode } from "./gateway-node-registry.mjs";
 import { restrictWindowsFileAccess } from "./taskscheduler.mjs";
 
 export const DEFAULT_GATEWAY_PORT = 18789;
@@ -184,17 +185,17 @@ function isLoopbackHost(host) {
     } catch {
         value = value.split(":")[0].replace(/^\[|\]$/g, "");
     }
-    return ["127.0.0.1", "localhost", "::1"].includes(value);
+    return ["localhost", "::1", "0:0:0:0:0:0:0:1"].includes(value) || value === "127.0.0.1" || value.startsWith("127.") || value === "::ffff:127.0.0.1";
 }
 
 function requestOriginAllowed(req, runtime) {
-    if (!isLoopbackHost(req.headers.host)) return false;
-    if (process.env.CLAWPILOT_GATEWAY_ALLOW_PUBLIC === "1" && !isLoopbackHost(req.socket.remoteAddress)) return false;
+    const allowPublic = process.env.CLAWPILOT_GATEWAY_ALLOW_PUBLIC === "1";
+    if (!allowPublic && (!isLoopbackHost(req.headers.host) || !isLoopbackHost(req.socket.remoteAddress))) return false;
     const origin = req.headers.origin;
     if (!origin) return true;
     try {
         const parsed = new URL(origin);
-        return isLoopbackHost(parsed.host) && Number(parsed.port || runtime.port) === Number(runtime.port);
+        return (allowPublic || isLoopbackHost(parsed.host)) && Number(parsed.port || runtime.port) === Number(runtime.port);
     } catch {
         return false;
     }
@@ -252,6 +253,7 @@ export async function startGatewayServer({ host = process.env.CLAWPILOT_GATEWAY_
     }
     await ensureGatewayDir(GATEWAY_DIR);
     await ensureGatewayDir(GATEWAY_SESSIONS_DIR);
+    await initializeGatewayNodes();
     const envToken = process.env.CLAWPILOT_GATEWAY_TOKEN;
     const token = envToken && envToken.trim() ? envToken : randomBytes(24).toString("hex");
     const runtime = {
@@ -312,9 +314,18 @@ export async function startGatewayServer({ host = process.env.CLAWPILOT_GATEWAY_
         const connId = randomBytes(8).toString("hex");
         let seq = 1;
         let connected = false;
+        let role = "operator";
         let wsBuffer = Buffer.alloc(0);
-        const send = (message) => socket.write(wsFrame(message));
-        const event = (name, payload) => send({ type: "event", event: name, payload, seq: seq++ });
+        const send = (message) => {
+            if (!socket.destroyed) socket.write(wsFrame(message));
+        };
+        const event = (name, payload, options = {}) => {
+            if (socket.destroyed) return false;
+            const message = { type: "event", event: name, payload };
+            if (options.seq !== false) message.seq = seq++;
+            send(message);
+            return true;
+        };
         const emitCompatEvents = (request, payload) => {
             const params = request.params || {};
             const sessionKey = params.sessionKey || params.key || params.session || params.sessionId || "main";
@@ -345,7 +356,7 @@ export async function startGatewayServer({ host = process.env.CLAWPILOT_GATEWAY_
                 event("cron", { method: request.method, payload });
             }
         };
-        event("connect.challenge", { nonce: connId, ts: Date.now() });
+        event("connect.challenge", { nonce: connId, ts: Date.now() }, { seq: false });
         const tick = setInterval(() => event("tick", { ts: Date.now() }), 30000);
         socket.on("data", async (data) => {
             if (wsBuffer.length + data.length > MAX_PAYLOAD_BYTES) {
@@ -374,6 +385,10 @@ export async function startGatewayServer({ host = process.env.CLAWPILOT_GATEWAY_
                     continue;
                 }
                 if (request.type !== "req") continue;
+                if (connected && request.method === "connect") {
+                    send({ type: "res", id: request.id, ok: false, error: { code: "ALREADY_CONNECTED", message: "Cannot reconnect on an established socket.", retryable: false } });
+                    continue;
+                }
                 if (!connected && request.method !== "connect") {
                     send({ type: "res", id: request.id, ok: false, error: { code: "NOT_PAIRED", message: "Call connect before other methods.", retryable: false } });
                     continue;
@@ -382,18 +397,58 @@ export async function startGatewayServer({ host = process.env.CLAWPILOT_GATEWAY_
                     send({ type: "res", id: request.id, ok: false, error: { code: "NOT_PAIRED", message: "Invalid gateway token.", retryable: false } });
                     continue;
                 }
-                const envelope = await gatewayRpcEnvelope(request, { runtime: { ...runtime, token: undefined }, connId });
+                const requestRole = request.method === "connect" && request.params?.role === "node" ? "node" : role;
+                let reservedNodeId = null;
+                if (request.method === "connect" && requestRole === "node") {
+                    try {
+                        reservedNodeId = reserveGatewayNodeConnect(request.params || {}, connId);
+                    } catch (err) {
+                        send({ type: "res", id: request.id, ok: false, error: { code: err.code || "INVALID_REQUEST", message: err.message, retryable: false } });
+                        continue;
+                    }
+                }
+                const envelope = await gatewayRpcEnvelope(request, { runtime: { ...runtime, token: undefined }, connId, role: requestRole });
                 if (envelope.ok) {
-                    if (request.method === "connect") connected = true;
+                    if (request.method === "connect") {
+                        connected = true;
+                        role = requestRole;
+                        send({ type: "res", id: request.id, ok: true, payload: envelope.result });
+                        if (role === "node") {
+                            try {
+                                const node = await registerGatewayNode({
+                                    connId,
+                                    connect: request.params || {},
+                                    remoteIp: req.socket.remoteAddress || null,
+                                    sendEvent: (name, payload) => event(name, payload, { seq: false }),
+                                });
+                                event("node.connected", { nodeId: node.nodeId || reservedNodeId, ts: Date.now() }, { seq: false });
+                            } catch (err) {
+                                connected = false;
+                                role = "operator";
+                                releaseGatewayNodeReservation(connId);
+                                event("shutdown", { reason: err.code || "node_registration_failed", message: err.message }, { seq: false });
+                                socket.end();
+                                return;
+                            }
+                        }
+                        continue;
+                    }
                     send({ type: "res", id: request.id, ok: true, payload: envelope.result });
                     emitCompatEvents(request, envelope.result);
                 } else {
+                    if (reservedNodeId) releaseGatewayNodeReservation(connId);
                     send({ type: "res", id: request.id, ok: false, error: { code: envelope.error?.code === "unsupported_method" ? "UNAVAILABLE" : "INVALID_REQUEST", message: envelope.error?.message || "Gateway error", details: envelope.error, retryable: false } });
                 }
             }
         });
-        socket.on("close", () => clearInterval(tick));
-        socket.on("error", () => clearInterval(tick));
+        socket.on("close", () => {
+            clearInterval(tick);
+            unregisterGatewayNode(connId).catch(() => {});
+        });
+        socket.on("error", () => {
+            clearInterval(tick);
+            unregisterGatewayNode(connId).catch(() => {});
+        });
     });
     await new Promise((resolve, reject) => {
         server.once("error", reject);

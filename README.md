@@ -98,7 +98,7 @@ Once running, just ask naturally:
 - **Smart workspace** — auto-detects OpenClaw workspace dir, falls back to `~/clawd` or `~/`
 - **OpenClaw-aware scheduler** — imports existing `~/.openclaw/cron` jobs as read-only `openclaw:<id>` entries
 - **OpenClaw agent sync** — imports OpenClaw agent config + safe `agentDir`/workspace definition files into Copilot custom agents on startup
-- **OpenClaw-compatible gateway** — exposes localhost `/rpc`, `/events`, and WebSocket protocol v3 compatibility surfaces for clients such as Jackson
+- **OpenClaw-compatible gateway** — exposes `/rpc`, `/events`, WebSocket protocol v3 compatibility, and a native node hub for clients such as Jackson
 - **No npm dependencies** — all extensions use Node.js built-ins only
 - **Security reviewed** — prompts stored in files (not systemd units), vault uses age encryption with `0700`/`0600` permissions, tokens validated on setup
 - **Cross-platform foundation** — Linux/systemd remains the stable baseline; Windows uses native Task Scheduler and PowerShell launchers

@@ -35,13 +35,13 @@ The interface should preserve OpenClaw-style envelopes, method names, lifecycle 
 | 3 | Message/session format | Replicate OpenClaw-style format in local Clawpilot storage or DB. |
 | 4 | Token-level streaming | Not needed initially. Stream output/events at practical chunks instead. |
 | 5 | Session graph/names | Try to mimic OpenClaw hierarchy through Copilot session names, e.g. `name:other:name`, if Copilot accepts it safely. |
-| 6 | Node APIs | Park. Future option: Clawpilot can interact with OpenClaw nodes rather than building Clawpilot nodes. |
-| 7 | Canvas/camera/screen/location | Park with node features. |
+| 6 | Node APIs | Implemented as a native Clawpilot node hub. OpenClaw-compatible nodes connect directly to Clawpilot; no OpenClaw gateway bridge is required. |
+| 7 | Canvas/camera/screen/location | Available through direct node commands when a connected node advertises those capabilities; Clawpilot-native node UX remains future work. |
 | 8 | Channels | Separate registration is fine if interaction looks the same through the gateway. |
 | 9 | Voice | Park. Future target is direct voice tokens in a local model, not current OpenClaw voice parity. |
 | 10 | Cron/schedule management | Interface should allow managing Clawpilot and OpenClaw crons as interchangeable schedule entities. |
 | 11 | Agent/subagent runtime graph | Mimic by directing agents/tasks to name work accordingly and by recording compatible metadata. |
-| 12 | Node approvals/permissions | Park with node features. |
+| 12 | Node approvals/permissions | Gateway auth/pairing is the permission boundary. After a node authenticates with the gateway key, Clawpilot grants full node access and auto-approves `system.run` requests sent via `node.exec`/`node.invoke`. |
 | 13 | Gateway state | Avoid real gateway state unless needed. If clients expect it, expose a fake/derived gateway state. |
 | 14 | Lifecycle/error states | Emulate according to OpenClaw source/docs. |
 | 15 | Multi-client writes | Park. If needed, add an incoming request queue and release bundled requests at specific intervals. |
@@ -63,6 +63,7 @@ The Clawpilot gateway should prioritize these OpenClaw-compatible surfaces first
 9. channel status and send interactions
 10. memory search/status
 11. vault secret-name list only
+12. native node list/describe/invoke/exec and node pending queue methods
 
 ## Emulation strategy
 
@@ -127,16 +128,21 @@ Records must include source/ownership:
 
 If Clawpilot is asked to mutate an OpenClaw-owned cron, the compatibility gateway should route that operation to OpenClaw when available instead of duplicating it as a Clawpilot timer.
 
+### Nodes
+
+Clawpilot now owns a native OpenClaw-compatible node hub instead of bridging to OpenClaw. Node clients connect to the Clawpilot gateway WebSocket with `role: "node"` and the Clawpilot gateway token. The hub registers connected nodes, persists last-known node metadata, sends `node.invoke.request` events to node sockets, and resolves operator `node.invoke` calls from node `node.invoke.result` requests.
+
+`system.run` follows the OpenClaw node-host flow but without a separate Clawpilot approval UI: Clawpilot sends `system.run.prepare`, then sends `system.run` with an auto-approved `allow-once` decision. This matches the chosen policy that gateway-key auth grants full access to everything the node can do.
+
 ## Parked items
 
 These are intentionally deferred and should not block the first gateway compatibility implementation.
 
 | Parked item | Reason | Future direction |
 |---|---|---|
-| Clawpilot-native node APIs | Not needed now. OpenClaw already owns node/device capability. | Add bridge calls from Clawpilot gateway to OpenClaw node APIs if needed. |
-| Canvas/camera/screen/location | Node-related and not required for first Jackson compatibility. | Expose via OpenClaw node bridge later. |
+| Clawpilot-native node UX/manager | Direct node RPC compatibility is implemented; a full node-management UI/installer flow is separate. | Add first-class node pairing/install management around the direct hub. |
+| Clawpilot-native canvas/camera/screen/location UX | Node transport can carry these commands, but no Clawpilot-native UX is implemented yet. | Build UI/workflows on top of connected node commands. |
 | Voice pipeline parity | Current design is changing toward direct voice tokens/local model. | Revisit after local voice-token architecture is defined. |
-| Node approval/permission model | OpenClaw-specific runtime concept. | If node bridge is added, defer to OpenClaw permissions. |
 | Multi-client simultaneous writes | Unlikely initial scenario. | Add per-session queue and bundled dispatch intervals. |
 | Perfect token-level streaming | Too technical and not required for user experience. | Stream practical output/event chunks first. |
 | Exact gateway in-memory state | Avoid unless clients require it. | Expose fake/derived state from filesystem/process truth. |
@@ -159,4 +165,3 @@ These are engineering checks, not product blockers:
 - Turn-based `chat.send` works through named/resumable Copilot sessions.
 - Schedule/cron operations present a unified model while preserving ownership.
 - No node, voice, or vault-value features are implemented accidentally in the first version.
-

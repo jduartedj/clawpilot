@@ -581,7 +581,7 @@ Windows PowerShell:
 
 ## 🌉 gateway — OpenClaw Compatibility
 
-Runs a localhost compatibility gateway so clients such as Jackson can connect to Clawpilot with an OpenClaw-style interface. Linux uses a systemd user service; Windows uses a `Clawpilot-gateway` Task Scheduler logon task. macOS lifecycle support is intentionally parked until the macOS platform plan resumes.
+Runs a compatibility gateway so clients such as Jackson can connect to Clawpilot with an OpenClaw-style interface. Linux uses a systemd user service; Windows uses a `Clawpilot-gateway` Task Scheduler logon task. macOS lifecycle support is intentionally parked until the macOS platform plan resumes.
 
 The gateway defaults to `127.0.0.1:18789`, matching OpenClaw's local gateway target. If that port is already occupied, set `CLAWPILOT_GATEWAY_PORT` before starting the service. The gateway writes runtime metadata, including the bearer token, under the platform state directory:
 
@@ -621,11 +621,26 @@ Show recent gateway logs.
 - HTTP probes: `GET /health`, `GET /healthz`, `GET /readyz`
 - HTTP RPC: `POST /rpc` with `Authorization: Bearer <token>`
 - Events: `GET /events?session=<sessionKey>` as SSE
-- WebSocket: OpenClaw-style v3 frames with `connect.challenge`, `connect`, `health`, `chat.send`, `sessions.*`, and `cron.*` aliases
+- WebSocket: OpenClaw-style v3 frames with `connect.challenge`, `connect`, `health`, `chat.send`, `sessions.*`, `cron.*`, and `node.*` aliases
 
 `chat.send` supports a safe `dryRun: true` mode for testing without invoking Copilot. Real turns run through named Copilot sessions and persist OpenClaw-like records under `gateway/sessions/<session>/`.
 
-Parked features such as nodes, canvas, voice, vault secret values, and perfect token streaming return explicit unsupported/capability responses instead of crashing.
+### Native node hub
+
+Clawpilot can accept OpenClaw-compatible node WebSocket connections directly; it does not require an OpenClaw gateway process. A node connects with `role: "node"` and the Clawpilot gateway bearer token in `connect.params.auth.token`. After that first gateway-key auth, Clawpilot treats the node as fully trusted and routes authorized operator `node.invoke` calls to it without a separate Clawpilot permission layer.
+
+Supported node RPC methods include `node.list`, `node.status`, `node.describe`, `node.invoke`, `node.exec`, `node.invoke.result`, `node.event`, `node.pending.enqueue`, `node.pending.drain`, `node.pending.pull`, and `node.pending.ack`. `node.exec` is a convenience alias for `system.run`: Clawpilot sends `system.run.prepare`, then sends `system.run` with an auto-approved `allow-once` decision to the connected node.
+
+Gateway state for known nodes is stored under:
+
+```text
+~/.clawpilot/gateway/nodes/known.json                 # Linux
+%LOCALAPPDATA%\Clawpilot\gateway\nodes\known.json     # Windows
+```
+
+The gateway still binds to loopback by default. For LAN nodes, explicitly set `CLAWPILOT_GATEWAY_BIND=0.0.0.0`, `CLAWPILOT_GATEWAY_ALLOW_PUBLIC=1`, `CLAWPILOT_GATEWAY_PORT=<port>`, and a strong `CLAWPILOT_GATEWAY_TOKEN`, then point the node at the host and port.
+
+Parked features such as voice, vault secret values, perfect token streaming, and Clawpilot-native voice/canvas UX parity return explicit unsupported/capability responses instead of crashing. Canvas/screen/camera/location can be exposed through connected nodes when the node advertises the relevant command.
 
 ---
 

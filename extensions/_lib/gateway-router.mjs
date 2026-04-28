@@ -1,6 +1,7 @@
 import { gatewayCapabilities, unsupportedCapability } from "./gateway-capabilities.mjs";
 import { abortCopilotTurn, runCopilotTurn } from "./gateway-copilot-turn.mjs";
 import { validateGatewayCwd } from "./gateway-cwd.mjs";
+import { nodeDescribe, nodeEvent, nodeExec, nodeInvoke, nodeInvokeResult, nodeList, nodePendingAck, nodePendingDrain, nodePendingEnqueue, nodePendingPull, nodeStatus } from "./gateway-nodes.mjs";
 import { deleteGatewaySession, ensureGatewaySession, getGatewaySession, listGatewaySessions, patchGatewaySession, readJsonl, resetGatewaySession, sessionPaths } from "./gateway-session.mjs";
 import {
     adapterStatus,
@@ -61,6 +62,11 @@ function alias(method) {
         "send": "channel.send",
         "system-presence": "system.presence",
         "config.get": "config.get",
+        "nodes.list": "node.list",
+        "nodes.status": "node.status",
+        "nodes.describe": "node.describe",
+        "node.exec": "node.exec",
+        "nodes.invoke": "node.invoke",
     }[method] || method;
 }
 
@@ -82,8 +88,17 @@ function sessionKey(params = {}) {
     return params.sessionKey || params.key || params.session || params.sessionId || params.name || "main";
 }
 
+function nodeRoleAllowed(method) {
+    return new Set(["connect", "node.invoke.result", "node.event", "node.pending.pull", "node.pending.ack", "node.pending.drain", "skills.bins"]).has(alias(method));
+}
+
 export async function handleGatewayMethod(methodName, params = {}, context = {}) {
     const method = alias(methodName);
+    if (context.role === "node" && !nodeRoleAllowed(methodName)) {
+        const err = new Error(`Node connections cannot call gateway method: ${methodName}`);
+        err.code = "unauthorized_role";
+        throw err;
+    }
     switch (method) {
         case "connect":
             return {
@@ -98,9 +113,13 @@ export async function handleGatewayMethod(methodName, params = {}, context = {})
                         "sessions.subscribe", "sessions.unsubscribe", "sessions.messages.subscribe", "sessions.messages.unsubscribe",
                         "sessions.patch", "sessions.reset", "sessions.delete",
                         "cron.list", "cron.status", "cron.add", "cron.update", "cron.remove", "cron.run",
+                        "node.list", "node.status", "node.describe", "node.invoke", "node.exec",
+                        "node.pending.enqueue", "node.pending.drain", "node.pending.pull", "node.pending.ack", "node.invoke.result", "node.event",
+                        "nodes.list", "nodes.status", "nodes.describe", "nodes.invoke",
+                        "skills.bins",
                         "channels.status", "send", "logs.tail", "usage.status",
                     ],
-                    events: ["connect.challenge", "chat", "agent", "sessions.changed", "session.message", "session.tool", "cron", "health", "tick", "shutdown"],
+                    events: ["connect.challenge", "chat", "agent", "sessions.changed", "session.message", "session.tool", "cron", "node.connected", "node.invoke.request", "health", "tick", "shutdown"],
                 },
                 snapshot: { presence: [], health: { ok: true, backend: "clawpilot" }, stateVersion: { presence: 1, health: 1 } },
                 auth: { role: "operator", scopes: ["operator.read", "operator.write"] },
@@ -199,10 +218,30 @@ export async function handleGatewayMethod(methodName, params = {}, context = {})
             return await memorySearch(params);
         case "vault.listNames":
             return await vaultListNames();
+        case "node.list":
+            return await nodeList(params);
         case "node.status":
-        case "nodes.list":
+            return await nodeStatus(params);
+        case "node.describe":
+            return await nodeDescribe(params);
         case "node.invoke":
+            return await nodeInvoke(params);
         case "node.exec":
+            return await nodeExec(params);
+        case "node.invoke.result":
+            return nodeInvokeResult(params, context);
+        case "node.event":
+            return nodeEvent(params, context);
+        case "node.pending.pull":
+            return nodePendingPull(params, context);
+        case "node.pending.ack":
+            return nodePendingAck(params, context);
+        case "node.pending.enqueue":
+            return nodePendingEnqueue(params);
+        case "node.pending.drain":
+            return nodePendingDrain(context.role === "node" ? { ...params, connId: context.connId } : params);
+        case "skills.bins":
+            return { bins: ["node", "npm", "npx", "python", "python3", "pwsh", "powershell", "cmd", "bash", "sh", "git"] };
         case "voice.status":
         case "voice.start":
         case "voice.stop":
