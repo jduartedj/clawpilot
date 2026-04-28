@@ -1,50 +1,69 @@
-# Clawpilot Custom Instructions for Copilot CLI
+# Clawpilot — Copilot CLI Custom Instructions
 
-These instructions should be copied to your project's `.github/copilot-instructions.md` or referenced via `COPILOT_CUSTOM_INSTRUCTIONS_DIRS`.
+Add this to your project's `.github/copilot-instructions.md` or reference via `COPILOT_CUSTOM_INSTRUCTIONS_DIRS` to teach Copilot CLI how to use Clawpilot tools naturally.
 
 ---
 
-## Clawpilot Tools Available
+## Clawpilot Tools
 
-You have access to `clawpilot_*` tools for background sessions, scheduling, heartbeats, messaging, memory, secrets, and orchestration.
+You have `clawpilot_*` tools for background sessions, scheduling, heartbeats, messaging, memory, secrets, and orchestration.
 
 ### Background Work
-- Use `clawpilot_spawn` to run long tasks in the background while continuing interactive work
-- Use `clawpilot_spawn_list` to check on spawned sessions
-- Use `clawpilot_spawn_read` to see output from background work
-- Completed spawn sessions are reported automatically when a new session starts
+- `clawpilot_spawn(name, prompt, cwd?, model?)` — launch long tasks in the background
+- `clawpilot_spawn_list()` — check spawned session status
+- `clawpilot_spawn_read(name, tail?)` — read output from background work
+- `clawpilot_spawn_kill(name)` — stop a running session
+- `clawpilot_spawn_clean(name?)` — remove finished sessions
+- Completed sessions are reported automatically on session start
 
 ### Scheduling
-- Use `clawpilot_schedule` for recurring tasks (daily reports, periodic checks)
-- Schedule syntax is systemd OnCalendar: 'hourly', 'daily', '*-*-* 08:00:00'
-- Each scheduled run is an independent `copilot -p` session
+- `clawpilot_schedule(name, schedule, prompt, cwd?, model?)` — create recurring tasks
+- Schedule uses systemd OnCalendar syntax: `hourly`, `daily`, `*-*-* 08:00:00`
+- `clawpilot_schedule_list()` — show all timers
+- `clawpilot_schedule_cancel(name)` — remove a task
+- `clawpilot_schedule_run_now(name)` — trigger immediately
+- `clawpilot_schedule_logs(name, lines?)` — view run logs
 
 ### Proactive Monitoring
-- Use `clawpilot_heartbeat_add` for checks that should run periodically and report on session start
-- Heartbeat results with `urgent: true` are highlighted prominently
-- Good candidates: email checks, service health, calendar events, security scans
+- `clawpilot_heartbeat_add(name, schedule, prompt)` — add a periodic check
+- `clawpilot_heartbeat_status()` — show checks and pending results
+- `clawpilot_heartbeat_remove(name)` — remove a check
+- `clawpilot_heartbeat_ack(name?)` — clear pending results
+- Results with `"urgent": true` are highlighted on session start
 
-### Messaging
-- Use `clawpilot_channel_setup` to configure Telegram/Discord/Slack with a bot token
-- Use `clawpilot_send_message` to send messages to configured channels
-- Use `clawpilot_read_messages` to read recent messages
+### Messaging (Telegram, Discord, Slack)
+- `clawpilot_channel_setup(channel, token, note?)` — configure with token validation
+- `clawpilot_send_message(channel, target, message)` — send to any configured channel
+- `clawpilot_read_messages(channel, target?, count?)` — read recent messages
+- `clawpilot_channel_status()` — live connection health
+- `clawpilot_channel_remove(channel)` — remove a channel
 - Ask before sending external messages unless urgency requires it
 
+### Always-On Daemon
+- `clawpilot_daemon_setup()` — install systemd inbox watcher
+- `clawpilot_daemon_inbox(prompt, name?, model?, cwd?)` — queue a task
+- `clawpilot_daemon_status()` — check daemon and inbox
+- `clawpilot_daemon_stop()` — stop the daemon
+
 ### Memory
-- Use `clawpilot_memory_store` for important decisions, events, and lessons learned
-- Use `clawpilot_memory_search` to find past decisions and context (FTS5 syntax)
-- Use `clawpilot_memory_rotate` periodically to archive old daily memory files into the database
+- `clawpilot_memory_store(content, tags?, date?)` — store important decisions/events
+- `clawpilot_memory_search(query, limit?)` — FTS5 search (supports AND, OR, NOT, phrases)
+- `clawpilot_memory_recent(days?, limit?)` — retrieve recent memories
+- `clawpilot_memory_rotate()` — archive old daily files into the database
 
 ### Secrets
-- Use `clawpilot_vault_set` / `clawpilot_vault_get` for sensitive data (API keys, passwords)
+- `clawpilot_vault_set(key, value)` — encrypt and store (uses age encryption)
+- `clawpilot_vault_get(key)` — decrypt and retrieve
+- `clawpilot_vault_list()` — list stored secrets (names only)
+- `clawpilot_vault_delete(key)` — remove a secret
 - Never store secrets in plain files — always use the vault
-- The vault uses age encryption; secrets are encrypted at rest
 
 ### Orchestration
-- Use `clawpilot_orchestrator_run` to trigger autonomous task selection from ORCHESTRATION.md
-- Use `clawpilot_orchestrator_steer` to adjust priorities
-- Combine with `clawpilot_schedule` for nightly autonomous operation
+- `clawpilot_orchestrator_run(orchestration_file?, roadmap_file?)` — pick next task
+- `clawpilot_orchestrator_status()` — show current state
+- `clawpilot_orchestrator_steer(directive)` — adjust priorities
+- `clawpilot_orchestrator_pause()` / `clawpilot_orchestrator_resume()` — control
 
-### Daemon
-- Use `clawpilot_daemon_setup` for always-on message processing
-- Use `clawpilot_daemon_inbox` to queue tasks for asynchronous processing
+### Error Resilience
+- `clawpilot_fallback_status()` — show retry config
+- Automatic retry on model errors (configurable in `~/.clawpilot/fallback.json`)

@@ -44,10 +44,10 @@ sudo apt install age
 ## Update
 
 ```bash
-cd ~/.clawpilot && git pull
+cd ~/.clawpilot && git pull && ./install.sh
 ```
 
-Extensions are symlink-wrapped — updates take effect on next Copilot CLI restart.
+Re-run `install.sh` after pulling to copy updated extension files. Restart Copilot CLI to reload.
 
 ## Uninstall
 
@@ -97,8 +97,14 @@ Once installed, Copilot CLI gains new tools. Just ask naturally:
 > Spawn a background session to refactor the auth module
 > Schedule a daily code review at 8am
 > Check what happened while I was away (heartbeat results)
-> Send "build complete" to my Discord channel
+> Send "build complete" to my Telegram chat
+> Store my API key in the vault
+> Search memory for "trading bot decisions"
 ```
+
+See [docs/USAGE.md](docs/USAGE.md) for the complete guide with all tools, parameters, and examples.
+
+See [docs/INSTRUCTIONS.md](docs/INSTRUCTIONS.md) for custom instructions to add to your project.
 
 ## License
 
