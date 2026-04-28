@@ -5,7 +5,7 @@ $CopilotExtDir = Join-Path $HOME ".copilot\extensions"
 $StateDir = Join-Path $env:LOCALAPPDATA "Clawpilot"
 $CompatStateDir = Join-Path $HOME ".clawpilot"
 $BinDir = Join-Path $StateDir "bin"
-$Extensions = @("spawn", "scheduler", "heartbeat", "channels", "daemon", "orchestrator", "memory-db", "vault", "fallback")
+$Extensions = @("spawn", "scheduler", "heartbeat", "channels", "daemon", "gateway", "orchestrator", "memory-db", "vault", "fallback")
 
 Write-Host "🦞 Clawpilot CLI — Installing extensions for Windows"
 Write-Host ""
@@ -25,7 +25,7 @@ if ($missingOptional.Count -gt 0) {
     Write-Host "   Install options: winget install SQLite.SQLite; winget install FiloSottile.age"
 }
 
-$stateSubdirs = @("spawned", "heartbeat", "vault", "logs", "scheduler", "channels", "orchestrator", "inbox", "processing", "processed", "history", "scripts")
+$stateSubdirs = @("spawned", "heartbeat", "vault", "logs", "scheduler", "channels", "orchestrator", "inbox", "processing", "processed", "history", "scripts", "gateway")
 New-Item -ItemType Directory -Force -Path $StateDir, $CompatStateDir, $BinDir | Out-Null
 foreach ($subdir in $stateSubdirs) {
     New-Item -ItemType Directory -Force -Path (Join-Path $StateDir $subdir) | Out-Null
@@ -56,6 +56,12 @@ foreach ($ext in $Extensions) {
     }
     New-Item -ItemType Directory -Force -Path $destDir | Out-Null
     Copy-Item -LiteralPath $src -Destination (Join-Path $destDir "extension.mjs") -Force
+    if ($ext -eq "gateway") {
+        $serverEntry = Join-Path $ClawpilotDir "extensions\gateway\server-entry.mjs"
+        if (Test-Path -LiteralPath $serverEntry) {
+            Copy-Item -LiteralPath $serverEntry -Destination (Join-Path $destDir "server-entry.mjs") -Force
+        }
+    }
     Write-Host "✅ $ext → $destDir"
     $installed++
 }

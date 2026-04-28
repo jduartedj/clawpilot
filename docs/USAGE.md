@@ -1,6 +1,6 @@
 # Clawpilot CLI — Complete Usage Guide
 
-> 9 extensions that add background sessions, scheduling, heartbeats, messaging, memory, secrets, orchestration, and error resilience to GitHub Copilot CLI.
+> 10 extensions that add background sessions, scheduling, heartbeats, messaging, an OpenClaw-compatible gateway, memory, secrets, orchestration, and error resilience to GitHub Copilot CLI.
 
 ---
 
@@ -12,12 +12,13 @@
 4. [heartbeat — Proactive Checks](#-heartbeat--proactive-checks)
 5. [channels — Native Messaging](#-channels--native-messaging)
 6. [daemon — Always-On Service](#-daemon--always-on-service)
-7. [orchestrator — Self-Driving Tasks](#-orchestrator--self-driving-tasks)
-8. [memory-db — SQLite Memory Store](#-memory-db--sqlite-memory-store)
-9. [vault — Encrypted Secrets](#-vault--encrypted-secrets)
-10. [fallback — Error Retry](#-fallback--error-retry)
-11. [State & Files](#state--files)
-12. [Troubleshooting](#troubleshooting)
+7. [gateway — OpenClaw Compatibility](#-gateway--openclaw-compatibility)
+8. [orchestrator — Self-Driving Tasks](#-orchestrator--self-driving-tasks)
+9. [memory-db — SQLite Memory Store](#-memory-db--sqlite-memory-store)
+10. [vault — Encrypted Secrets](#-vault--encrypted-secrets)
+11. [fallback — Error Retry](#-fallback--error-retry)
+12. [State & Files](#state--files)
+13. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -43,7 +44,7 @@ cd $env:LOCALAPPDATA\Clawpilot\src
 
 The installer automatically:
 - Installs GitHub Copilot CLI if not found on Linux; Windows currently requires Copilot CLI to already be on PATH
-- Copies all 9 extensions to `~/.copilot/extensions/`
+- Copies all 10 extensions to `~/.copilot/extensions/`
 - Creates state directories in `~/.clawpilot/` on Linux or `%LOCALAPPDATA%\Clawpilot` on Windows
 - Links or installs the `clawpilot` launcher (`~/.local/bin/` on Linux, `%LOCALAPPDATA%\Clawpilot\bin` on Windows)
 - Reports any missing optional dependencies (sqlite3, age)
@@ -575,6 +576,56 @@ Windows PowerShell:
 ```powershell
 '{"prompt":"Check disk space and report"}' | Set-Content -Encoding utf8 $env:LOCALAPPDATA\Clawpilot\inbox\check-disk.json
 ```
+
+---
+
+## 🌉 gateway — OpenClaw Compatibility
+
+Runs a localhost compatibility gateway so clients such as Jackson can connect to Clawpilot with an OpenClaw-style interface. Linux uses a systemd user service; Windows uses a `Clawpilot-gateway` Task Scheduler logon task. macOS lifecycle support is intentionally parked until the macOS platform plan resumes.
+
+The gateway defaults to `127.0.0.1:18789`, matching OpenClaw's local gateway target. If that port is already occupied, set `CLAWPILOT_GATEWAY_PORT` before starting the service. The gateway writes runtime metadata, including the bearer token, under the platform state directory:
+
+```text
+~/.clawpilot/gateway/runtime/runtime.json                 # Linux
+%LOCALAPPDATA%\Clawpilot\gateway\runtime\runtime.json     # Windows
+```
+
+### Tools
+
+#### `clawpilot_gateway_start`
+
+Install and start the compatibility gateway.
+
+#### `clawpilot_gateway_status`
+
+Show platform service/task state, URL, PID, and bearer token.
+
+#### `clawpilot_gateway_stop`
+
+Stop and disable the gateway.
+
+#### `clawpilot_gateway_url`
+
+Print the current URL and bearer token for clients.
+
+#### `clawpilot_gateway_logs`
+
+Show recent gateway logs.
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `lines` | | Log lines to show (default: 100) |
+
+### Protocol surface
+
+- HTTP probes: `GET /health`, `GET /healthz`, `GET /readyz`
+- HTTP RPC: `POST /rpc` with `Authorization: Bearer <token>`
+- Events: `GET /events?session=<sessionKey>` as SSE
+- WebSocket: OpenClaw-style v3 frames with `connect.challenge`, `connect`, `health`, `chat.send`, `sessions.*`, and `cron.*` aliases
+
+`chat.send` supports a safe `dryRun: true` mode for testing without invoking Copilot. Real turns run through named Copilot sessions and persist OpenClaw-like records under `gateway/sessions/<session>/`.
+
+Parked features such as nodes, canvas, voice, vault secret values, and perfect token streaming return explicit unsupported/capability responses instead of crashing.
 
 ---
 

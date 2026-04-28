@@ -5,7 +5,7 @@ CLAWPILOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 COPILOT_EXT_DIR="${HOME}/.copilot/extensions"
 CLAWPILOT_STATE="${HOME}/.clawpilot"
 
-EXTENSIONS=(spawn scheduler heartbeat channels daemon orchestrator memory-db vault fallback)
+EXTENSIONS=(spawn scheduler heartbeat channels daemon gateway orchestrator memory-db vault fallback)
 
 echo "🦞 Clawpilot CLI — Installing extensions"
 echo ""
@@ -66,8 +66,8 @@ if [ ${#MISSING_OPTIONAL[@]} -gt 0 ]; then
 fi
 
 # Create state directories with restrictive permissions
-mkdir -p "${CLAWPILOT_STATE}"/{spawned,heartbeat,vault,logs,scheduler,channels,orchestrator,inbox,processed,history,scripts}
-chmod 700 "${CLAWPILOT_STATE}" "${CLAWPILOT_STATE}"/{spawned,heartbeat,vault,logs,scheduler,channels,orchestrator,inbox,processed,history,scripts}
+mkdir -p "${CLAWPILOT_STATE}"/{spawned,heartbeat,vault,logs,scheduler,channels,orchestrator,inbox,processed,history,scripts,gateway}
+chmod 700 "${CLAWPILOT_STATE}" "${CLAWPILOT_STATE}"/{spawned,heartbeat,vault,logs,scheduler,channels,orchestrator,inbox,processed,history,scripts,gateway}
 echo "✅ State directory: ${CLAWPILOT_STATE} (0700)"
 
 # Create copilot extensions directory if needed
@@ -137,6 +137,9 @@ for ext in "${EXTENSIONS[@]}"; do
     # Updates require re-running install.sh
     mkdir -p "$dest_dir"
     cp "$src" "${dest_dir}/extension.mjs"
+    if [ "$ext" = "gateway" ] && [ -f "${CLAWPILOT_DIR}/extensions/gateway/server-entry.mjs" ]; then
+        cp "${CLAWPILOT_DIR}/extensions/gateway/server-entry.mjs" "${dest_dir}/server-entry.mjs"
+    fi
 
     echo "✅ ${ext} → ${dest_dir}"
     installed=$((installed + 1))

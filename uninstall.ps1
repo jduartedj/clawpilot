@@ -3,12 +3,12 @@ $ErrorActionPreference = "Stop"
 $CopilotExtDir = Join-Path $HOME ".copilot\extensions"
 $StateDir = Join-Path $env:LOCALAPPDATA "Clawpilot"
 $BinDir = Join-Path $StateDir "bin"
-$Extensions = @("spawn", "scheduler", "heartbeat", "channels", "daemon", "orchestrator", "memory-db", "vault", "fallback")
+$Extensions = @("spawn", "scheduler", "heartbeat", "channels", "daemon", "gateway", "orchestrator", "memory-db", "vault", "fallback")
 
 Write-Host "🦞 Clawpilot CLI — Uninstalling Windows extensions"
 Write-Host ""
 
-$taskNames = @("Clawpilot-daemon")
+$taskNames = @("Clawpilot-daemon", "Clawpilot-gateway")
 try {
     $taskNames += @(Get-ScheduledTask -TaskName "Clawpilot-*" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty TaskName)
 } catch {

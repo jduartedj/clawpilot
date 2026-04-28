@@ -16,7 +16,7 @@ function powerShellSingleQuote(value) {
     return `'${String(value).replace(/'/g, "''")}'`;
 }
 
-async function restrictWindowsFileAccess(path) {
+export async function restrictWindowsFileAccess(path) {
     if (!IS_WINDOWS) return;
     const username = process.env.USERNAME;
     if (!username) {
@@ -165,25 +165,15 @@ exit $exitCode
 }
 
 export function buildPowerShellTaskCommand({ scriptPath, promptFile, copilotName, cwd, model, logFile }) {
-    if (!promptFile && !copilotName && !cwd && !model && !logFile) {
-        return [
-            "powershell.exe",
-            "-NoProfile",
-            "-ExecutionPolicy", "Bypass",
-            "-File", winCommandQuote(scriptPath),
-        ].join(" ");
+    if (promptFile || copilotName || cwd || model || logFile) {
+        throw new Error("Windows scheduled tasks must use a generated wrapper script.");
     }
     const parts = [
         "powershell.exe",
         "-NoProfile",
         "-ExecutionPolicy", "Bypass",
         "-File", winCommandQuote(scriptPath),
-        "-PromptFile", winCommandQuote(promptFile),
-        "-Name", winCommandQuote(copilotName),
-        "-Cwd", winCommandQuote(cwd),
     ];
-    if (model) parts.push("-Model", winCommandQuote(model));
-    if (logFile) parts.push("-LogFile", winCommandQuote(logFile));
     return parts.join(" ");
 }
 

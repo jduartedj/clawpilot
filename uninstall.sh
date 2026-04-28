@@ -4,10 +4,23 @@ set -euo pipefail
 COPILOT_EXT_DIR="${HOME}/.copilot/extensions"
 CLAWPILOT_STATE="${HOME}/.clawpilot"
 
-EXTENSIONS=(spawn scheduler heartbeat channels daemon orchestrator memory-db vault fallback)
+EXTENSIONS=(spawn scheduler heartbeat channels daemon gateway orchestrator memory-db vault fallback)
 
 echo "🦞 Clawpilot CLI — Uninstalling extensions"
 echo ""
+
+if command -v systemctl &>/dev/null; then
+    for unit in clawpilot-gateway.service clawpilot-daemon.path clawpilot-daemon.service; do
+        systemctl --user stop "$unit" 2>/dev/null || true
+        systemctl --user disable "$unit" 2>/dev/null || true
+        unit_file="${HOME}/.config/systemd/user/${unit}"
+        if [ -f "$unit_file" ]; then
+            rm "$unit_file"
+            echo "🗑️  Removed systemd unit $unit"
+        fi
+    done
+    systemctl --user daemon-reload 2>/dev/null || true
+fi
 
 removed=0
 for ext in "${EXTENSIONS[@]}"; do

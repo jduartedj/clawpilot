@@ -21,6 +21,12 @@ export const CLAWPILOT_LOGS_DIR = join(CLAWPILOT_STATE_DIR, "logs");
 export const CLAWPILOT_COMPAT_LOGS_DIR = join(CLAWPILOT_COMPAT_STATE_DIR, "logs");
 export const COPILOT_USER_EXTENSIONS_DIR = join(HOME, ".copilot", "extensions");
 export const COPILOT_BIN = "copilot";
+export const GATEWAY_DIR = join(CLAWPILOT_STATE_DIR, "gateway");
+export const GATEWAY_SESSIONS_DIR = join(GATEWAY_DIR, "sessions");
+export const GATEWAY_RUNTIME_DIR = join(GATEWAY_DIR, "runtime");
+export const GATEWAY_LOCKS_DIR = join(GATEWAY_DIR, "locks");
+export const GATEWAY_QUEUES_DIR = join(GATEWAY_DIR, "queues");
+export const GATEWAY_LOGS_DIR = join(CLAWPILOT_LOGS_DIR, "gateway");
 
 export const statePath = (...parts) => join(CLAWPILOT_STATE_DIR, ...parts);
 export const compatStatePath = (...parts) => join(CLAWPILOT_COMPAT_STATE_DIR, ...parts);

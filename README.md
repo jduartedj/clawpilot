@@ -13,12 +13,13 @@ Clawpilot is a set of **extensions** for [GitHub Copilot CLI](https://github.com
 | **heartbeat** | Proactive checks with session-start notification injection | ✅ |
 | **channels** | Native messaging (Telegram, Discord, Slack) | ✅ |
 | **daemon** | Always-on systemd service dispatching from an inbox queue | ✅ |
+| **gateway** | OpenClaw-compatible localhost gateway for Jackson/backend clients | ✅ |
 | **orchestrator** | Self-driving task engine (reads ORCHESTRATION.md/ROADMAP.md) | ✅ |
 | **memory-db** | SQLite memory store with FTS5 full-text search | ✅ |
 | **vault** | age-encrypted local secrets with rotation tracking | ✅ |
 | **fallback** | Automatic retry on model errors | ✅ |
 
-**37 tools** total. Zero npm dependencies — pure Node.js built-ins + native system utilities.
+**42 tools** total. Zero npm dependencies — pure Node.js built-ins + native system utilities.
 
 ## Quick Start
 
@@ -67,7 +68,7 @@ Once running, just ask naturally:
 > Search memory for "trading bot decisions"
 ```
 
-📖 **[Full Usage Guide →](docs/USAGE.md)** — all 37 tools with parameters, examples, and setup guides.
+📖 **[Full Usage Guide →](docs/USAGE.md)** — all 42 tools with parameters, examples, and setup guides.
 
 ## How It Works
 
@@ -76,10 +77,11 @@ Once running, just ask naturally:
 │  GitHub Copilot CLI                     │ ← Untouched, updates independently
 │  (proprietary, any version)             │
 ├─────────────────────────────────────────┤
-│  Clawpilot Extensions (9)               │ ← ~/.copilot/extensions/
+│  Clawpilot Extensions (10)              │ ← ~/.copilot/extensions/
 │  spawn · scheduler · heartbeat          │
-│  channels · daemon · orchestrator       │
-│  memory-db · vault · fallback           │
+│  channels · daemon · gateway            │
+│  orchestrator · memory-db               │
+│  vault · fallback                       │
 ├─────────────────────────────────────────┤
 │  Clawpilot State                        │ ← ~/.clawpilot/ (Linux), %LOCALAPPDATA%\Clawpilot (Windows)
 │  spawned/ · heartbeat/ · vault/         │
@@ -96,6 +98,7 @@ Once running, just ask naturally:
 - **Smart workspace** — auto-detects OpenClaw workspace dir, falls back to `~/clawd` or `~/`
 - **OpenClaw-aware scheduler** — imports existing `~/.openclaw/cron` jobs as read-only `openclaw:<id>` entries
 - **OpenClaw agent sync** — imports OpenClaw agent config + safe `agentDir`/workspace definition files into Copilot custom agents on startup
+- **OpenClaw-compatible gateway** — exposes localhost `/rpc`, `/events`, and WebSocket protocol v3 compatibility surfaces for clients such as Jackson
 - **No npm dependencies** — all extensions use Node.js built-ins only
 - **Security reviewed** — prompts stored in files (not systemd units), vault uses age encryption with `0700`/`0600` permissions, tokens validated on setup
 - **Cross-platform foundation** — Linux/systemd remains the stable baseline; Windows uses native Task Scheduler and PowerShell launchers
@@ -129,7 +132,7 @@ cd $env:LOCALAPPDATA\Clawpilot\src
 
 ## Docs
 
-- **[Usage Guide](docs/USAGE.md)** — complete reference for all 37 tools
+- **[Usage Guide](docs/USAGE.md)** — complete reference for all 42 tools
 - **[Custom Instructions](docs/INSTRUCTIONS.md)** — add to `.github/copilot-instructions.md`
 - **[Linux Refactor Plan](docs/PLAN-LINUX-REFACTOR.md)** — platform abstraction work before Windows/macOS
 - **[Windows Implementation Plan](docs/PLAN-WINDOWS-IMPLEMENTATION.md)** — Task Scheduler and PowerShell support
