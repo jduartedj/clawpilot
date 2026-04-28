@@ -97,24 +97,19 @@ const session = await joinSession({
                 ];
                 if (args.model) copilotArgs.push("--model", args.model);
 
+                const { openSync, closeSync } = await import("node:fs");
+                const logFd = openSync(logPath, "w");
+
                 const child = nodeSpawn("setsid", [COPILOT_BIN, ...copilotArgs], {
                     cwd: args.cwd || process.cwd(),
-                    stdio: ["ignore", "pipe", "pipe"],
+                    stdio: ["ignore", logFd, logFd],
                     detached: true,
                     env: { ...process.env },
                 });
 
-                // Write output to log using file descriptors (not pipes)
-                // so the child survives parent exit without SIGPIPE
-                const { openSync, closeSync, createWriteStream } = await import("node:fs");
-                const logStream = createWriteStream(logPath, { flags: "w" });
-                child.stdout.pipe(logStream);
-                child.stderr.pipe(logStream);
-                // Ignore pipe errors so parent can exit cleanly
-                child.stdout.on("error", () => {});
-                child.stderr.on("error", () => {});
-                logStream.on("error", () => {});
                 child.unref();
+                // Close our copy of the FD — the child owns it now
+                closeSync(logFd);
 
                 const meta = {
                     pid: child.pid,
