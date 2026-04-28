@@ -1,22 +1,38 @@
 #!/usr/bin/env bash
-# Clawpilot CLI launcher — always resumes the "main" session.
-#
-# First run: creates a session named "main"
-# Subsequent runs: resumes the "main" session (picks up where you left off)
+# Clawpilot CLI launcher
+# Wraps Copilot CLI with sensible defaults for autonomous operation.
 #
 # Usage:
-#   clawpilot                     # Resume/start main session
-#   clawpilot --autopilot         # Resume in autopilot mode
-#   clawpilot --model gpt-5.5    # Resume with model override
-#   clawpilot -p "do something"  # Non-interactive with main session context
-#
-# Install as alias:
-#   echo 'alias clawpilot="~/.clawpilot/clawpilot.sh"' >> ~/.bashrc
+#   clawpilot                     # Resume main session (autopilot + yolo)
+#   clawpilot -p "task"           # Non-interactive autonomous run
+#   clawpilot --no-yolo           # Resume without auto-approving tools
+#   clawpilot --no-autopilot      # Resume in interactive mode
+#   clawpilot --session work      # Use a different named session
+#   clawpilot --model gpt-5.5    # Override model
+#   clawpilot -- --any-flag       # Pass arbitrary flags to copilot
 
 SESSION_NAME="main"
+AUTOPILOT=true
+YOLO=true
 
-# Check if a session named "main" exists by looking at session state
-# copilot --resume="name" will resume if found, or show picker if not
-# We suppress the picker by trying resume first, falling back to new named session
-exec copilot --resume="$SESSION_NAME" "$@" 2>/dev/null \
-  || exec copilot --name="$SESSION_NAME" "$@"
+# Parse clawpilot-specific flags (before --)
+COPILOT_EXTRA_ARGS=()
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --no-yolo)        YOLO=false; shift ;;
+        --no-autopilot)   AUTOPILOT=false; shift ;;
+        --session)        SESSION_NAME="$2"; shift 2 ;;
+        --session=*)      SESSION_NAME="${1#--session=}"; shift ;;
+        --)               shift; COPILOT_EXTRA_ARGS+=("$@"); break ;;
+        *)                COPILOT_EXTRA_ARGS+=("$1"); shift ;;
+    esac
+done
+
+# Build copilot args
+ARGS=()
+ARGS+=(--resume="$SESSION_NAME" --name="$SESSION_NAME")
+[[ "$AUTOPILOT" == true ]] && ARGS+=(--autopilot)
+[[ "$YOLO" == true ]]      && ARGS+=(--allow-all)
+ARGS+=("${COPILOT_EXTRA_ARGS[@]}")
+
+exec copilot "${ARGS[@]}"

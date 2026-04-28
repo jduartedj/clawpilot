@@ -61,13 +61,21 @@ cd ~/.clawpilot && ./uninstall.sh
 After install, you get a `clawpilot` command (in `~/.local/bin/`):
 
 ```bash
-clawpilot              # Resume your "main" session (picks up where you left off)
-clawpilot --autopilot  # Resume in autopilot mode
+clawpilot              # Resume main session (autopilot + yolo mode)
+clawpilot --no-yolo    # Resume without auto-approving tools
+clawpilot --no-autopilot  # Resume in interactive mode
+clawpilot --session work  # Use a different named session
+clawpilot -p "do X"   # Non-interactive autonomous run
 clawpilot --model X    # Resume with model override
 copilot                # Normal Copilot CLI (starts a new session)
 ```
 
-The `clawpilot` command wraps `copilot --resume="main"` so you always return to the same persistent session. First run creates it; every subsequent run resumes it with full conversation history.
+The `clawpilot` command wraps `copilot` with these defaults:
+- `--resume="main"` — always resume the same persistent session
+- `--autopilot` — agent continues working without pausing for approval at each step
+- `--allow-all` — auto-approve all tools, paths, and URLs (yolo mode)
+
+Use `--no-yolo` and `--no-autopilot` to disable these for more cautious work. Use `--session <name>` to maintain multiple persistent sessions (e.g., `--session work`, `--session personal`).
 
 ---
 

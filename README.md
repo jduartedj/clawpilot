@@ -42,8 +42,11 @@ clawpilot
 ## Usage
 
 ```bash
-clawpilot              # Resume your persistent "main" session
-clawpilot --autopilot  # Resume in autopilot mode
+clawpilot              # Resume main session (autopilot + yolo mode)
+clawpilot --no-yolo    # Resume without auto-approving tools
+clawpilot --no-autopilot  # Resume in interactive mode
+clawpilot --session work  # Use a different named session
+clawpilot -p "do X"   # Non-interactive autonomous run
 copilot                # Normal Copilot CLI (new session each time)
 ```
 
