@@ -74,5 +74,12 @@ ARGS+=("${COPILOT_EXTRA_ARGS[@]}")
 
 cd "$WORKSPACE"
 
-# Resume the named session (shows session picker if not found on first run)
-exec copilot --resume="$SESSION_NAME" "${ARGS[@]}"
+# Try to resume the named session; if it doesn't exist, start a new one
+# --resume fails with exit code 1 when no session matches the name
+copilot --resume="$SESSION_NAME" "${ARGS[@]}" 2>/dev/null
+exit_code=$?
+
+if [[ $exit_code -ne 0 ]]; then
+    # Session doesn't exist yet — create it with --name
+    exec copilot --name="$SESSION_NAME" "${ARGS[@]}"
+fi
