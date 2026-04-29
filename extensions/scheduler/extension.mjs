@@ -1,4 +1,4 @@
-// Clawpilot CLI — scheduler extension
+// PilotClaw CLI — scheduler extension
 // Schedule recurring tasks via systemd user timers.
 import { joinSession } from "@github/copilot-sdk/extension";
 import { writeFile, unlink, readFile } from "node:fs/promises";
@@ -16,7 +16,7 @@ const OPENCLAW_RUNS_DIR = join(OPENCLAW_CRON_DIR, "runs");
 const OPENCLAW_WORKSPACE = join(HOME, "clawd");
 
 function unitName(name) {
-    return systemdUnitName("clawpilot", name);
+    return systemdUnitName("pilotclaw", name);
 }
 
 function scheduledTaskName(name) {
@@ -108,7 +108,7 @@ function buildOpenClawPrompt(job) {
         `OpenClaw job ID: ${job.id}`,
         `OpenClaw agent ID: ${job.agentId || "main"}`,
         "",
-        "Run the original cron task below as a Clawpilot scheduled task.",
+        "Run the original cron task below as a PilotClaw scheduled task.",
         "",
         message,
     ].join("\n");
@@ -118,7 +118,7 @@ async function runOpenClawJob(job) {
     await ensureDir(STATE_DIR);
     const slug = sanitizeName(`${job.name || job.id}-${String(job.id || "").slice(0, 8)}`) || "openclaw-cron";
     const promptFile = join(STATE_DIR, `${slug}.openclaw.prompt`);
-    const unit = `clawpilot-openclaw-${slug}-${Date.now()}`;
+    const unit = `pilotclaw-openclaw-${slug}-${Date.now()}`;
     const cwd = OPENCLAW_WORKSPACE;
     await writeFile(promptFile, buildOpenClawPrompt(job), { mode: 0o600 });
 
@@ -147,7 +147,7 @@ function buildServiceUnit(name, cwd, model) {
     const promptFile = join(STATE_DIR, `${name}.prompt`);
     const modelArg = model ? ` --model "${model.replace(/[\r\n"]/g, "")}"` : "";
     return `[Unit]
-Description=Clawpilot scheduled task: ${name.replace(/[\r\n]/g, "")}
+Description=PilotClaw scheduled task: ${name.replace(/[\r\n]/g, "")}
 
 [Service]
 Type=oneshot
@@ -162,7 +162,7 @@ StandardError=journal
 
 function buildTimerUnit(name, schedule) {
     return `[Unit]
-Description=Clawpilot timer: ${name.replace(/[\r\n]/g, "")}
+Description=PilotClaw timer: ${name.replace(/[\r\n]/g, "")}
 
 [Timer]
 OnCalendar=${schedule.replace(/[\r\n]/g, "")}
@@ -177,7 +177,7 @@ WantedBy=timers.target
 const session = await joinSession({
     tools: [
         {
-            name: "clawpilot_schedule",
+            name: "pilotclaw_schedule",
             description:
                 "Schedule a recurring Copilot CLI task using systemd user timers. " +
                 "On Windows, uses Task Scheduler for the supported schedule subset. " +
@@ -268,28 +268,28 @@ const session = await joinSession({
             },
         },
         {
-            name: "clawpilot_schedule_list",
-            description: "List all scheduled Clawpilot tasks with their next run time, including imported OpenClaw crons if present.",
+            name: "pilotclaw_schedule_list",
+            description: "List all scheduled PilotClaw tasks with their next run time, including imported OpenClaw crons if present.",
             parameters: { type: "object", properties: {} },
             handler: async () => {
                 if (IS_WINDOWS) {
                     const result = await queryAllTasks();
                     const local = result.ok
-                        ? (result.stdout.split(/\r?\n\r?\n/).filter((block) => block.includes("TaskName:") && block.includes("Clawpilot-sched-")).join("\n\n") || "No native Clawpilot scheduled tasks.")
+                        ? (result.stdout.split(/\r?\n\r?\n/).filter((block) => block.includes("TaskName:") && block.includes("PilotClaw-sched-")).join("\n\n") || "No native PilotClaw scheduled tasks.")
                         : `Failed to query Windows scheduled tasks: ${result.stderr}`;
                     const { jobs, states } = await readOpenClawCrons();
                     return `${local}\n\n${formatOpenClawCronList(jobs, states)}`;
                 }
-                const result = await listTimers("clawpilot-*");
+                const result = await listTimers("pilotclaw-*");
                 const local = (!result.stdout || result.stdout.includes("0 timers"))
-                    ? "No native Clawpilot scheduled tasks."
+                    ? "No native PilotClaw scheduled tasks."
                     : result.stdout;
                 const { jobs, states } = await readOpenClawCrons();
                 return `${local}\n\n${formatOpenClawCronList(jobs, states)}`;
             },
         },
         {
-            name: "clawpilot_schedule_cancel",
+            name: "pilotclaw_schedule_cancel",
             description: "Cancel and remove a scheduled task.",
             parameters: {
                 type: "object",
@@ -303,7 +303,7 @@ const session = await joinSession({
                 if (openclaw) {
                     return {
                         textResultForLlm:
-                            "Imported OpenClaw crons are read-only in Clawpilot. Disable or delete them with OpenClaw's cron tools.",
+                            "Imported OpenClaw crons are read-only in PilotClaw. Disable or delete them with OpenClaw's cron tools.",
                         resultType: "failure",
                     };
                 }
@@ -340,7 +340,7 @@ const session = await joinSession({
             },
         },
         {
-            name: "clawpilot_schedule_run_now",
+            name: "pilotclaw_schedule_run_now",
             description: "Manually trigger a scheduled task to run immediately.",
             parameters: {
                 type: "object",
@@ -362,18 +362,18 @@ const session = await joinSession({
                     if (!result.ok) {
                         return { textResultForLlm: `Failed to start Windows scheduled task: ${result.stderr}`, resultType: "failure" };
                     }
-                    return `Triggered '${name}' — check logs with clawpilot_schedule_logs.`;
+                    return `Triggered '${name}' — check logs with pilotclaw_schedule_logs.`;
                 }
                 const result = await startUnit(`${unit}.service`);
 
                 if (!result.ok) {
                     return { textResultForLlm: `Failed to start: ${result.stderr}`, resultType: "failure" };
                 }
-                return `Triggered '${name}' — check logs with clawpilot_schedule_logs.`;
+                return `Triggered '${name}' — check logs with pilotclaw_schedule_logs.`;
             },
         },
         {
-            name: "clawpilot_schedule_logs",
+            name: "pilotclaw_schedule_logs",
             description: "View logs from a scheduled task's recent runs.",
             parameters: {
                 type: "object",

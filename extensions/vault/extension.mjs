@@ -1,4 +1,4 @@
-// Clawpilot CLI — vault extension
+// PilotClaw CLI — vault extension
 // age-encrypted local secrets with rotation tracking.
 import { joinSession } from "@github/copilot-sdk/extension";
 import { execFile } from "node:child_process";
@@ -6,7 +6,7 @@ import { mkdir, readFile, writeFile, readdir, unlink, stat } from "node:fs/promi
 import { join } from "node:path";
 import { homedir } from "node:os";
 
-const VAULT_DIR = join(homedir(), ".clawpilot", "vault");
+const VAULT_DIR = join(homedir(), ".pilotclaw", "vault");
 const KEY_FILE = join(VAULT_DIR, ".age-key");
 const ROTATION_LOG = join(VAULT_DIR, ".rotation.json");
 
@@ -72,7 +72,7 @@ async function saveRotationLog(log) {
 const session = await joinSession({
     tools: [
         {
-            name: "clawpilot_vault_set",
+            name: "pilotclaw_vault_set",
             description: "Store a secret in the encrypted vault. The value is encrypted with age before writing to disk.",
             parameters: {
                 type: "object",
@@ -110,7 +110,7 @@ const session = await joinSession({
             },
         },
         {
-            name: "clawpilot_vault_get",
+            name: "pilotclaw_vault_get",
             description: "Retrieve and decrypt a secret from the vault.",
             parameters: {
                 type: "object",
@@ -136,7 +136,7 @@ const session = await joinSession({
             },
         },
         {
-            name: "clawpilot_vault_list",
+            name: "pilotclaw_vault_list",
             description: "List all secrets stored in the vault (names only, not values).",
             parameters: { type: "object", properties: {} },
             handler: async () => {
@@ -162,7 +162,7 @@ const session = await joinSession({
             },
         },
         {
-            name: "clawpilot_vault_delete",
+            name: "pilotclaw_vault_delete",
             description: "Delete a secret from the vault.",
             parameters: {
                 type: "object",

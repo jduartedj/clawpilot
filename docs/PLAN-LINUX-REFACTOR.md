@@ -2,7 +2,7 @@
 
 ## Goal
 
-Refactor Clawpilot's current Linux/systemd implementation behind platform abstractions without changing Linux behavior. This is the foundation for later Windows and macOS support.
+Refactor PilotClaw's current Linux/systemd implementation behind platform abstractions without changing Linux behavior. This is the foundation for later Windows and macOS support.
 
 ## Scope
 
@@ -20,7 +20,7 @@ Out of scope:
 - Windows Task Scheduler implementation.
 - macOS launchd implementation.
 - Changing public tool schemas.
-- Changing storage layout under `~/.clawpilot`.
+- Changing storage layout under `~/.pilotclaw`.
 
 ## Current Linux-specific surfaces
 
@@ -55,8 +55,8 @@ The Linux refactor should keep imports explicit and dependency-free: only Node b
    - Replace shell `tail` with Node file tail.
    - Preserve metadata format.
 3. Refactor `daemon`:
-   - Generate a Node handler in `~/.clawpilot/daemon-handler.mjs`.
-   - Keep `clawpilot-daemon.path` + `.service`.
+   - Generate a Node handler in `~/.pilotclaw/daemon-handler.mjs`.
+   - Keep `pilotclaw-daemon.path` + `.service`.
    - Remove runtime dependency on `jq`.
    - Preserve inbox JSON format and processed-file behavior.
 4. Refactor `scheduler`:
@@ -73,12 +73,12 @@ The Linux refactor should keep imports explicit and dependency-free: only Node b
 Run locally on Linux:
 
 1. `node --check` for all `.mjs` files.
-2. `bash -n install.sh clawpilot.sh uninstall.sh`.
+2. `bash -n install.sh pilotclaw.sh uninstall.sh`.
 3. `./install.sh`.
 4. Reload Copilot extensions.
 5. Scheduler smoke:
    - create a far-future timer
-   - confirm `clawpilot_schedule_list`
+   - confirm `pilotclaw_schedule_list`
    - trigger/cancel/log without leaving units behind
 6. Spawn smoke:
    - spawn short task or synthetic long task

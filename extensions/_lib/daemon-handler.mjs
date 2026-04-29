@@ -92,11 +92,11 @@ export async function watchInboxLoop() {
 
     watch(INBOX_DIR, { persistent: true }, schedule);
     setInterval(schedule, 10000);
-    console.log(`Clawpilot daemon watching ${INBOX_DIR}`);
+    console.log(`PilotClaw daemon watching ${INBOX_DIR}`);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-    const run = process.argv.includes("--watch") || process.env.CLAWPILOT_DAEMON_WATCH === "1"
+    const run = process.argv.includes("--watch") || process.env.PILOTCLAW_DAEMON_WATCH === "1"
         ? watchInboxLoop()
         : processInbox();
     run.catch((err) => {

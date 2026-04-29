@@ -1,4 +1,4 @@
-// Clawpilot CLI — heartbeat extension
+// PilotClaw CLI — heartbeat extension
 // Proactive background checks with session-start notification injection.
 import { joinSession } from "@github/copilot-sdk/extension";
 import { readFile, writeFile, readdir, unlink } from "node:fs/promises";
@@ -40,7 +40,7 @@ async function getPendingResults() {
 }
 
 function unitName(name) {
-    return systemdUnitName("clawpilot-hb", name);
+    return systemdUnitName("pilotclaw-hb", name);
 }
 
 function scheduledTaskName(name) {
@@ -64,7 +64,7 @@ function buildServiceUnit(name, prompt) {
     // Store prompt in a file, not inline in the unit
     const promptFile = join(HEARTBEAT_DIR, `${name}.prompt`);
     return `[Unit]
-Description=Clawpilot heartbeat: ${name.replace(/[\r\n]/g, "")}
+Description=PilotClaw heartbeat: ${name.replace(/[\r\n]/g, "")}
 
 [Service]
 Type=oneshot
@@ -79,7 +79,7 @@ StandardError=journal
 
 function buildTimerUnit(name, schedule) {
     return `[Unit]
-Description=Clawpilot heartbeat timer: ${name}
+Description=PilotClaw heartbeat timer: ${name}
 
 [Timer]
 OnCalendar=${schedule}
@@ -93,7 +93,7 @@ WantedBy=timers.target
 const session = await joinSession({
     tools: [
         {
-            name: "clawpilot_heartbeat_add",
+            name: "pilotclaw_heartbeat_add",
             description:
                 "Add a proactive heartbeat check. Runs on a schedule and reports results when you start a new session. " +
                 "Uses systemd timers on Linux and Task Scheduler on Windows. " +
@@ -175,7 +175,7 @@ const session = await joinSession({
             },
         },
         {
-            name: "clawpilot_heartbeat_remove",
+            name: "pilotclaw_heartbeat_remove",
             description: "Remove a heartbeat check and its systemd timer.",
             parameters: {
                 type: "object",
@@ -219,7 +219,7 @@ const session = await joinSession({
             },
         },
         {
-            name: "clawpilot_heartbeat_status",
+            name: "pilotclaw_heartbeat_status",
             description: "Show all heartbeat checks, their schedules, and any pending results.",
             parameters: { type: "object", properties: {} },
             handler: async () => {
@@ -227,7 +227,7 @@ const session = await joinSession({
                 const pending = await getPendingResults();
 
                 if (config.checks.length === 0 && pending.length === 0) {
-                    return "No heartbeat checks configured. Use clawpilot_heartbeat_add to create one.";
+                    return "No heartbeat checks configured. Use pilotclaw_heartbeat_add to create one.";
                 }
 
                 let output = "## Heartbeat Checks\n";
@@ -255,7 +255,7 @@ const session = await joinSession({
             },
         },
         {
-            name: "clawpilot_heartbeat_ack",
+            name: "pilotclaw_heartbeat_ack",
             description: "Acknowledge and clear pending heartbeat results.",
             parameters: {
                 type: "object",
@@ -284,7 +284,7 @@ const session = await joinSession({
             const urgent = pending.filter((r) => r.urgent);
             const normal = pending.filter((r) => !r.urgent);
 
-            let ctx = `[Clawpilot Heartbeat] ${pending.length} result(s) since last session:\n`;
+            let ctx = `[PilotClaw Heartbeat] ${pending.length} result(s) since last session:\n`;
             if (urgent.length > 0) {
                 ctx += `\n🔴 URGENT (${urgent.length}):\n`;
                 for (const r of urgent) {
@@ -298,7 +298,7 @@ const session = await joinSession({
                     ctx += `• ${r.name}: ${r.summary}\n`;
                 }
             }
-            ctx += `\nUse clawpilot_heartbeat_ack to clear these, or clawpilot_heartbeat_status for details.`;
+            ctx += `\nUse pilotclaw_heartbeat_ack to clear these, or pilotclaw_heartbeat_status for details.`;
 
             return { additionalContext: ctx };
         },

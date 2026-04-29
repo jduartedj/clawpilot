@@ -1,4 +1,4 @@
-// Clawpilot CLI — spawn extension
+// PilotClaw CLI — spawn extension
 // Launch and manage parallel background Copilot CLI sessions.
 // Includes auto-resume: detects interrupted tasks on exit and re-spawns them.
 import { joinSession } from "@github/copilot-sdk/extension";
@@ -34,11 +34,11 @@ async function saveMeta(name, meta) {
 const session = await joinSession({
     tools: [
         {
-            name: "clawpilot_spawn",
+            name: "pilotclaw_spawn",
             description:
                 "Launch a background Copilot CLI session. Runs `copilot -p` in the background with full tool access. " +
                 "The session runs autonomously and output is captured to a log file. " +
-                "Use clawpilot_spawn_list to check status and clawpilot_spawn_read to see output.",
+                "Use pilotclaw_spawn_list to check status and pilotclaw_spawn_read to see output.",
             parameters: {
                 type: "object",
                 properties: {
@@ -102,11 +102,11 @@ const session = await joinSession({
                     }
                 });
 
-                return `Spawned session '${name}' (PID ${child.pid})\nLog: ${logPath}\nUse clawpilot_spawn_read to check output.`;
+                return `Spawned session '${name}' (PID ${child.pid})\nLog: ${logPath}\nUse pilotclaw_spawn_read to check output.`;
             },
         },
         {
-            name: "clawpilot_spawn_list",
+            name: "pilotclaw_spawn_list",
             description: "List all spawned background sessions with their status (running/completed/failed).",
             parameters: { type: "object", properties: {} },
             handler: async () => {
@@ -145,7 +145,7 @@ const session = await joinSession({
             },
         },
         {
-            name: "clawpilot_spawn_read",
+            name: "pilotclaw_spawn_read",
             description: "Read the output log of a spawned background session.",
             parameters: {
                 type: "object",
@@ -175,7 +175,7 @@ const session = await joinSession({
             },
         },
         {
-            name: "clawpilot_spawn_kill",
+            name: "pilotclaw_spawn_kill",
             description: "Kill a running spawned background session.",
             parameters: {
                 type: "object",
@@ -205,7 +205,7 @@ const session = await joinSession({
             },
         },
         {
-            name: "clawpilot_spawn_clean",
+            name: "pilotclaw_spawn_clean",
             description: "Remove completed/failed/killed spawned sessions and their logs.",
             parameters: {
                 type: "object",
@@ -263,7 +263,7 @@ const session = await joinSession({
                             );
 
                             contextParts.push(
-                                `[Clawpilot Auto-Resume] Your last session was interrupted. A background session was working on it but you're back now — it has been stopped and handed back to you.\n\n` +
+                                `[PilotClaw Auto-Resume] Your last session was interrupted. A background session was working on it but you're back now — it has been stopped and handed back to you.\n\n` +
                                 `**Original task:** ${interrupted.prompt}\n\n` +
                                 `**Progress from background session (partial output):**\n${partialOutput}\n\n` +
                                 `Continue this task from where the background session left off. The user is back and available for interaction.`
@@ -280,7 +280,7 @@ const session = await joinSession({
                             );
 
                             contextParts.push(
-                                `[Clawpilot Auto-Resume] Your last session was interrupted. A background session completed the task while you were away.\n\n` +
+                                `[PilotClaw Auto-Resume] Your last session was interrupted. A background session completed the task while you were away.\n\n` +
                                 `**Original task:** ${interrupted.prompt}\n\n` +
                                 `**Background session output:**\n${output}\n\n` +
                                 `Review the output above. The task was completed autonomously. Let the user know what was accomplished.`
@@ -316,7 +316,7 @@ const session = await joinSession({
 
             if (completed.length > 0) {
                 contextParts.push(
-                    `[Clawpilot] ${completed.length} background session(s) finished since last check:\n${completed.join("\n")}\nUse clawpilot_spawn_read to see their output, or clawpilot_spawn_clean to remove them.`
+                    `[PilotClaw] ${completed.length} background session(s) finished since last check:\n${completed.join("\n")}\nUse pilotclaw_spawn_read to see their output, or pilotclaw_spawn_clean to remove them.`
                 );
             }
 

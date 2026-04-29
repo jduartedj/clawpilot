@@ -189,7 +189,7 @@ function isLoopbackHost(host) {
 }
 
 function requestOriginAllowed(req, runtime) {
-    const allowPublic = process.env.CLAWPILOT_GATEWAY_ALLOW_PUBLIC === "1";
+    const allowPublic = process.env.PILOTCLAW_GATEWAY_ALLOW_PUBLIC === "1";
     if (!allowPublic && (!isLoopbackHost(req.headers.host) || !isLoopbackHost(req.socket.remoteAddress))) return false;
     const origin = req.headers.origin;
     if (!origin) return true;
@@ -247,14 +247,14 @@ async function handleEvents(req, res, runtime) {
     req.on("close", () => clearInterval(timer));
 }
 
-export async function startGatewayServer({ host = process.env.CLAWPILOT_GATEWAY_BIND || "127.0.0.1", port = Number(process.env.CLAWPILOT_GATEWAY_PORT || DEFAULT_GATEWAY_PORT) } = {}) {
-    if (!isLoopbackHost(host) && process.env.CLAWPILOT_GATEWAY_ALLOW_PUBLIC !== "1") {
-        throw new Error("Refusing non-loopback gateway bind without CLAWPILOT_GATEWAY_ALLOW_PUBLIC=1.");
+export async function startGatewayServer({ host = process.env.PILOTCLAW_GATEWAY_BIND || "127.0.0.1", port = Number(process.env.PILOTCLAW_GATEWAY_PORT || DEFAULT_GATEWAY_PORT) } = {}) {
+    if (!isLoopbackHost(host) && process.env.PILOTCLAW_GATEWAY_ALLOW_PUBLIC !== "1") {
+        throw new Error("Refusing non-loopback gateway bind without PILOTCLAW_GATEWAY_ALLOW_PUBLIC=1.");
     }
     await ensureGatewayDir(GATEWAY_DIR);
     await ensureGatewayDir(GATEWAY_SESSIONS_DIR);
     await initializeGatewayNodes();
-    const envToken = process.env.CLAWPILOT_GATEWAY_TOKEN;
+    const envToken = process.env.PILOTCLAW_GATEWAY_TOKEN;
     const token = envToken && envToken.trim() ? envToken : randomBytes(24).toString("hex");
     const runtime = {
         pid: process.pid,

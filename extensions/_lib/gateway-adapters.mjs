@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { ensureDir, readJsonFile, sanitizeName } from "./fs.mjs";
 import { exec } from "./exec.mjs";
 import { gatewayCapabilities, unsupportedCapability } from "./gateway-capabilities.mjs";
-import { COPILOT_BIN, HOME, IS_WINDOWS, CLAWPILOT_STATE_DIR, compatStatePath, statePath } from "./platform.mjs";
+import { COPILOT_BIN, HOME, IS_WINDOWS, PILOTCLAW_STATE_DIR, compatStatePath, statePath } from "./platform.mjs";
 import { createScheduledCopilotTask, deleteTask, queryAllTasks, queryTask, runTask, taskLog, taskName as windowsTaskName } from "./taskscheduler.mjs";
 import { daemonReload, enableNow, journalLogs, listTimers, removeUserUnit, runTransientUnit, startUnit, stopDisable, unitName as systemdUnitName, writeUserUnit } from "./systemd.mjs";
 import { validateGatewayCwd } from "./gateway-cwd.mjs";
@@ -26,18 +26,18 @@ function shellSingleQuote(value) {
 }
 
 function scheduleUnitName(name) {
-    return systemdUnitName("clawpilot", name);
+    return systemdUnitName("pilotclaw", name);
 }
 
 function heartbeatUnitName(name) {
-    return systemdUnitName("clawpilot-hb", name);
+    return systemdUnitName("pilotclaw-hb", name);
 }
 
 function linuxScheduleService(name, cwd, model) {
     const promptFile = join(SCHEDULER_DIR, `${name}.prompt`);
     const modelArgs = model ? ` --model ${shellSingleQuote(model)}` : "";
     return `[Unit]
-Description=Clawpilot scheduled task: ${name}
+Description=PilotClaw scheduled task: ${name}
 
 [Service]
 Type=oneshot
@@ -52,7 +52,7 @@ StandardError=journal
 
 function linuxTimer(name, schedule) {
     return `[Unit]
-Description=Clawpilot schedule timer: ${name}
+Description=PilotClaw schedule timer: ${name}
 
 [Timer]
 OnCalendar=${String(schedule).replace(/[\r\n]/g, " ")}
@@ -72,7 +72,7 @@ IMPORTANT: After completing the check, write a brief JSON summary of your findin
 function heartbeatService(name, prompt) {
     const promptFile = join(HEARTBEAT_DIR, `${name}.prompt`);
     return `[Unit]
-Description=Clawpilot heartbeat: ${name}
+Description=PilotClaw heartbeat: ${name}
 
 [Service]
 Type=oneshot
@@ -117,7 +117,7 @@ function buildOpenClawPrompt(job) {
         `OpenClaw job ID: ${job.id}`,
         `OpenClaw agent ID: ${job.agentId || "main"}`,
         "",
-        "Run the original cron task below as a Clawpilot scheduled task.",
+        "Run the original cron task below as a PilotClaw scheduled task.",
         "",
         message,
     ].join("\n");
@@ -126,7 +126,7 @@ function buildOpenClawPrompt(job) {
 function scrubbedGatewayEnv() {
     const env = { ...process.env };
     for (const key of Object.keys(env)) {
-        if (key.startsWith("CLAWPILOT_GATEWAY_")) delete env[key];
+        if (key.startsWith("PILOTCLAW_GATEWAY_")) delete env[key];
     }
     return env;
 }
@@ -148,13 +148,13 @@ async function triggerOpenClawJob(job) {
             logPath,
             env: scrubbedGatewayEnv(),
         });
-        return { id: `openclaw:${job.id}`, triggered: true, pid: child.pid, logFile: logPath, compatibility: "triggered-through-clawpilot" };
+        return { id: `openclaw:${job.id}`, triggered: true, pid: child.pid, logFile: logPath, compatibility: "triggered-through-pilotclaw" };
     }
-    const unit = `clawpilot-openclaw-${slug}-${Date.now()}`;
+    const unit = `pilotclaw-openclaw-${slug}-${Date.now()}`;
     const command = `exec ${COPILOT_BIN} -p "$(cat ${shellSingleQuote(promptFile)})" --allow-all --autopilot --silent --no-ask-user --name ${shellSingleQuote(`openclaw-cron-${slug}`)}`;
     const result = await runTransientUnit({ unit, cwd, command });
     if (!result.ok) throw new Error(result.stderr || result.stdout || "Failed to trigger imported OpenClaw cron.");
-    return { id: `openclaw:${job.id}`, triggered: true, unit, compatibility: "triggered-through-clawpilot" };
+    return { id: `openclaw:${job.id}`, triggered: true, unit, compatibility: "triggered-through-pilotclaw" };
 }
 
 export async function scheduleList() {
@@ -165,17 +165,17 @@ export async function scheduleList() {
         if (result.ok) {
             for (const block of result.stdout.split(/\r?\n\r?\n/)) {
                 const taskName = block.match(/TaskName:\s*(.+)/)?.[1]?.trim();
-                if (taskName?.includes("Clawpilot-sched-")) {
-                    items.push({ id: taskName.replace(/^.*Clawpilot-sched-/, ""), source: "clawpilot", platform: "windows", mutable: true, raw: block });
+                if (taskName?.includes("PilotClaw-sched-")) {
+                    items.push({ id: taskName.replace(/^.*PilotClaw-sched-/, ""), source: "pilotclaw", platform: "windows", mutable: true, raw: block });
                 }
             }
         }
     } else {
-        const result = await listTimers("clawpilot-*");
+        const result = await listTimers("pilotclaw-*");
         if (result.ok) {
-            for (const line of result.stdout.split(/\r?\n/).filter((line) => line.includes("clawpilot-"))) {
-                const unit = line.match(/(clawpilot-[^\s]+\.timer)/)?.[1];
-                if (unit) items.push({ id: unit.replace(/^clawpilot-/, "").replace(/\.timer$/, ""), source: "clawpilot", platform: "linux", mutable: true, raw: line });
+            for (const line of result.stdout.split(/\r?\n/).filter((line) => line.includes("pilotclaw-"))) {
+                const unit = line.match(/(pilotclaw-[^\s]+\.timer)/)?.[1];
+                if (unit) items.push({ id: unit.replace(/^pilotclaw-/, "").replace(/\.timer$/, ""), source: "pilotclaw", platform: "linux", mutable: true, raw: line });
             }
         }
     }
@@ -185,7 +185,7 @@ export async function scheduleList() {
             id: `openclaw:${job.id}`,
             source: "openclaw",
             mutable: false,
-            compatibility: "read-through-openclaw-trigger-through-clawpilot",
+            compatibility: "read-through-openclaw-trigger-through-pilotclaw",
             name: job.name || job.id,
             enabled: job.enabled !== false,
             state: states[job.id]?.state || {},
@@ -201,7 +201,7 @@ export async function scheduleCreate({ name, schedule, prompt, cwd = HOME, model
     if (/[\r\n]/.test(String(schedule || ""))) throw new Error("schedule.create schedule must not contain newlines.");
     cwd = await validateGatewayCwd(cwd);
     if (String(name).startsWith("openclaw:")) {
-        return { ok: false, error: { code: "managed_by_openclaw", message: "OpenClaw-owned schedules are read-only in Clawpilot v0.1." } };
+        return { ok: false, error: { code: "managed_by_openclaw", message: "OpenClaw-owned schedules are read-only in PilotClaw v0.1." } };
     }
     await ensureDir(SCHEDULER_DIR);
     if (IS_WINDOWS) {
@@ -223,7 +223,7 @@ export async function scheduleCreate({ name, schedule, prompt, cwd = HOME, model
 export async function scheduleDelete({ name }) {
     name = name || arguments[0]?.id;
     if (String(name).startsWith("openclaw:")) {
-        return { ok: false, error: { code: "managed_by_openclaw", message: "OpenClaw-owned schedules are read-only in Clawpilot v0.1." } };
+        return { ok: false, error: { code: "managed_by_openclaw", message: "OpenClaw-owned schedules are read-only in PilotClaw v0.1." } };
     }
     const safe = sanitizeName(name);
     if (!safe) throw new Error("schedule.delete requires a name.");
@@ -399,7 +399,7 @@ export async function vaultListNames() {
 
 export async function adapterStatus() {
     return {
-        stateDir: CLAWPILOT_STATE_DIR,
+        stateDir: PILOTCLAW_STATE_DIR,
         capabilities: gatewayCapabilities(),
         parked: {
             nodes: unsupportedCapability("nodes"),

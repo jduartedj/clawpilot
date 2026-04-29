@@ -2,7 +2,7 @@
 
 ## Goal
 
-Add first-class Clawpilot support on Windows using native Windows primitives while preserving the current Clawpilot tool surface.
+Add first-class PilotClaw support on Windows using native Windows primitives while preserving the current PilotClaw tool surface.
 
 ## Prerequisites
 
@@ -14,15 +14,15 @@ Add first-class Clawpilot support on Windows using native Windows primitives whi
 
 | Feature | Windows backend |
 |---|---|
-| Launcher | `clawpilot.cmd` delegating to `clawpilot.ps1` |
+| Launcher | `pilotclaw.cmd` delegating to `pilotclaw.ps1` |
 | Installer | `install.ps1` |
 | Scheduler | Task Scheduler via `schtasks.exe` |
 | Heartbeat | Same scheduler backend |
 | Daemon | Node inbox watcher started at logon via Task Scheduler |
 | Spawn | detached child process + `taskkill /T /F /PID` |
-| Logs | files under `%LOCALAPPDATA%\\Clawpilot\\logs` and compatibility `~\\.clawpilot\\logs` |
-| State | `%LOCALAPPDATA%\\Clawpilot`, with `%USERPROFILE%\\.clawpilot` compatibility alias when safe |
-| Extensions | `%USERPROFILE%\\.copilot\\extensions\\clawpilot-*` |
+| Logs | files under `%LOCALAPPDATA%\\PilotClaw\\logs` and compatibility `~\\.pilotclaw\\logs` |
+| State | `%LOCALAPPDATA%\\PilotClaw`, with `%USERPROFILE%\\.pilotclaw` compatibility alias when safe |
+| Extensions | `%USERPROFILE%\\.copilot\\extensions\\pilotclaw-*` |
 
 ## Implementation sequence
 
@@ -41,8 +41,8 @@ Add first-class Clawpilot support on Windows using native Windows primitives whi
 5. Add installer/launcher:
    - `install.ps1`
    - `uninstall.ps1`
-   - `clawpilot.ps1`
-   - `clawpilot.cmd`
+   - `pilotclaw.ps1`
+   - `pilotclaw.cmd`
 6. Update docs:
    - README Windows install.
    - troubleshooting for PowerShell execution policy and PATH refresh.
@@ -66,13 +66,13 @@ Unsupported patterns should fail clearly with a suggested supported alternative.
 When Kara is available:
 
 1. Fresh clone and `install.ps1` as non-admin.
-2. `clawpilot` runs from PowerShell and cmd.
-3. `clawpilot_schedule` creates a visible Task Scheduler task.
-4. `clawpilot_schedule_run_now` starts the task.
-5. `clawpilot_schedule_cancel` removes it.
-6. `clawpilot_spawn` starts a background job.
-7. `clawpilot_spawn_kill` kills the entire child tree.
-8. `clawpilot_daemon_setup` installs the watcher.
+2. `pilotclaw` runs from PowerShell and cmd.
+3. `pilotclaw_schedule` creates a visible Task Scheduler task.
+4. `pilotclaw_schedule_run_now` starts the task.
+5. `pilotclaw_schedule_cancel` removes it.
+6. `pilotclaw_spawn` starts a background job.
+7. `pilotclaw_spawn_kill` kills the entire child tree.
+8. `pilotclaw_daemon_setup` installs the watcher.
 9. Dropping inbox JSON triggers processing within 30 seconds.
 10. Reboot or log out/in and verify scheduled/logon tasks still work.
 

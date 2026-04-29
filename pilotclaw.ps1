@@ -10,7 +10,7 @@ $Autopilot = $true
 $Yolo = $true
 $CopilotExtraArgs = New-Object System.Collections.Generic.List[string]
 
-function Get-ClawpilotWorkspace {
+function Get-PilotClawWorkspace {
     $openclawConfig = Join-Path $HOME ".openclaw\openclaw.json"
     if (Test-Path -LiteralPath $openclawConfig) {
         try {
@@ -33,7 +33,7 @@ function Get-ClawpilotWorkspace {
 }
 
 function Sync-OpenClawAgents {
-    $syncScript = Join-Path $env:LOCALAPPDATA "Clawpilot\scripts\import-openclaw-agents.mjs"
+    $syncScript = Join-Path $env:LOCALAPPDATA "PilotClaw\scripts\import-openclaw-agents.mjs"
     if ((Test-Path -LiteralPath $syncScript) -and (Get-Command node -ErrorAction SilentlyContinue)) {
         & node $syncScript | Out-Null
     }
@@ -64,7 +64,7 @@ while ($i -lt $Args.Count) {
     }
 }
 
-$Workspace = Get-ClawpilotWorkspace
+$Workspace = Get-PilotClawWorkspace
 Sync-OpenClawAgents
 
 $copilotArgs = New-Object System.Collections.Generic.List[string]

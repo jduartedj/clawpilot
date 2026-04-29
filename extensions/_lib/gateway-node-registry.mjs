@@ -82,7 +82,7 @@ function connectedNodeDoc(node) {
         connected: true,
         connectedAtMs: node.connectedAtMs,
         lastSeenAtMs: nowMs(),
-        source: "clawpilot",
+        source: "pilotclaw",
     };
 }
 

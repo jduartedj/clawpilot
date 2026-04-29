@@ -5,7 +5,7 @@ import { exec } from "./exec.mjs";
 import { COPILOT_BIN, IS_WINDOWS, statePath } from "./platform.mjs";
 
 export function taskName(prefix, name) {
-    return `Clawpilot-${sanitizeName(`${prefix}-${name}`)}`;
+    return `PilotClaw-${sanitizeName(`${prefix}-${name}`)}`;
 }
 
 function winCommandQuote(value) {
@@ -143,7 +143,7 @@ $ErrorActionPreference = "Stop"
 if ($LogFile) {
     $logDir = Split-Path -Parent $LogFile
     if ($logDir) { New-Item -ItemType Directory -Force -Path $logDir | Out-Null }
-    "[$(Get-Date -Format o)] Starting Clawpilot task $Name" | Out-File -FilePath $LogFile -Append -Encoding utf8
+    "[$(Get-Date -Format o)] Starting PilotClaw task $Name" | Out-File -FilePath $LogFile -Append -Encoding utf8
 }
 Set-Location -LiteralPath $Cwd
 $prompt = Get-Content -LiteralPath $PromptFile -Raw
@@ -156,7 +156,7 @@ if ($LogFile) {
 }
 $exitCode = if ($null -eq $LASTEXITCODE) { 0 } else { $LASTEXITCODE }
 if ($LogFile) {
-    "[$(Get-Date -Format o)] Finished Clawpilot task $Name with exit code $exitCode" | Out-File -FilePath $LogFile -Append -Encoding utf8
+    "[$(Get-Date -Format o)] Finished PilotClaw task $Name with exit code $exitCode" | Out-File -FilePath $LogFile -Append -Encoding utf8
 }
 exit $exitCode
 `);

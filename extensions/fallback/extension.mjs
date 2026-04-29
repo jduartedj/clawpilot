@@ -1,11 +1,11 @@
-// Clawpilot CLI — fallback extension
+// PilotClaw CLI — fallback extension
 // Automatic retry on model errors with configurable retry count.
 import { joinSession } from "@github/copilot-sdk/extension";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { homedir } from "node:os";
 
-const CONFIG_FILE = join(homedir(), ".clawpilot", "fallback.json");
+const CONFIG_FILE = join(homedir(), ".pilotclaw", "fallback.json");
 
 const DEFAULT_CHAINS = {
     default: ["claude-sonnet-4", "gpt-5.4", "claude-haiku-4.5"],
@@ -40,7 +40,7 @@ const session = await joinSession({
                 retryCount = 0;
                 return {
                     errorHandling: "abort",
-                    userNotification: `[Clawpilot] Model failed after ${config.maxRetries || 2} retries. Error: ${input.error}`,
+                    userNotification: `[PilotClaw] Model failed after ${config.maxRetries || 2} retries. Error: ${input.error}`,
                 };
             }
 
@@ -53,7 +53,7 @@ const session = await joinSession({
     },
     tools: [
         {
-            name: "clawpilot_fallback_status",
+            name: "pilotclaw_fallback_status",
             description: "Show current fallback chain configuration and retry status.",
             parameters: { type: "object", properties: {} },
             handler: async () => {

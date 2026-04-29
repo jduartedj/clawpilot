@@ -1,6 +1,6 @@
-// Clawpilot CLI — daemon extension
+// PilotClaw CLI — daemon extension
 // Always-on message queue dispatcher.
-// Watches ~/.clawpilot/inbox/ for message files and spawns Copilot sessions to handle them.
+// Watches ~/.pilotclaw/inbox/ for message files and spawns Copilot sessions to handle them.
 import { joinSession } from "@github/copilot-sdk/extension";
 import { fileURLToPath } from "node:url";
 import { writeFile, readdir } from "node:fs/promises";
@@ -12,8 +12,8 @@ import { createOnLogonTask, deleteTask, endTask, queryTask } from "../_lib/tasks
 
 const INBOX_DIR = statePath("inbox");
 const PROCESSED_DIR = statePath("processed");
-const DAEMON_UNIT = "clawpilot-daemon";
-const WINDOWS_DAEMON_TASK = "Clawpilot-daemon";
+const DAEMON_UNIT = "pilotclaw-daemon";
+const WINDOWS_DAEMON_TASK = "PilotClaw-daemon";
 const EXTENSION_DIR = dirname(fileURLToPath(import.meta.url));
 const DAEMON_HANDLER = resolve(EXTENSION_DIR, "..", "_lib", "daemon-handler.mjs");
 
@@ -22,7 +22,7 @@ function buildDaemonService() {
     // When a file appears, it triggers the handler service
     return {
         path: `[Unit]
-Description=Clawpilot inbox watcher
+Description=PilotClaw inbox watcher
 
 [Path]
 PathExistsGlob=${INBOX_DIR}/*.json
@@ -32,7 +32,7 @@ MakeDirectory=yes
 WantedBy=default.target
 `,
         service: `[Unit]
-Description=Clawpilot inbox handler
+Description=PilotClaw inbox handler
 
 [Service]
 Type=oneshot
@@ -72,10 +72,10 @@ function buildWindowsDaemonCommand() {
 const session = await joinSession({
     tools: [
         {
-            name: "clawpilot_daemon_setup",
+            name: "pilotclaw_daemon_setup",
             description:
-                "Set up the Clawpilot daemon — a systemd path watcher on Linux or logon Task Scheduler watcher on Windows. " +
-                "It automatically processes messages dropped into the Clawpilot inbox. When a JSON file appears, it spawns a Copilot session to handle it.",
+                "Set up the PilotClaw daemon — a systemd path watcher on Linux or logon Task Scheduler watcher on Windows. " +
+                "It automatically processes messages dropped into the PilotClaw inbox. When a JSON file appears, it spawns a Copilot session to handle it.",
             parameters: { type: "object", properties: {} },
             handler: async () => {
                 await ensureDir(INBOX_DIR);
@@ -105,12 +105,12 @@ const session = await joinSession({
                     return { textResultForLlm: `Setup failed: ${result.stderr}`, resultType: "failure" };
                 }
 
-                return `Daemon setup complete.\n• Inbox: ${INBOX_DIR}\n• Drop JSON files with {prompt, model?, cwd?} to trigger Copilot sessions.\n• Handler: ${DAEMON_HANDLER}\n• Logs: ~/.clawpilot/logs/`;
+                return `Daemon setup complete.\n• Inbox: ${INBOX_DIR}\n• Drop JSON files with {prompt, model?, cwd?} to trigger Copilot sessions.\n• Handler: ${DAEMON_HANDLER}\n• Logs: ~/.pilotclaw/logs/`;
             },
         },
         {
-            name: "clawpilot_daemon_status",
-            description: "Check if the Clawpilot daemon is running and show inbox status.",
+            name: "pilotclaw_daemon_status",
+            description: "Check if the PilotClaw daemon is running and show inbox status.",
             parameters: { type: "object", properties: {} },
             handler: async () => {
                 const pathStatus = IS_WINDOWS
@@ -134,7 +134,7 @@ const session = await joinSession({
             },
         },
         {
-            name: "clawpilot_daemon_inbox",
+            name: "pilotclaw_daemon_inbox",
             description: "Queue a message for the daemon to process. Creates a JSON file in the inbox that the daemon will pick up.",
             parameters: {
                 type: "object",
@@ -165,8 +165,8 @@ const session = await joinSession({
             },
         },
         {
-            name: "clawpilot_daemon_stop",
-            description: "Stop the Clawpilot daemon.",
+            name: "pilotclaw_daemon_stop",
+            description: "Stop the PilotClaw daemon.",
             parameters: { type: "object", properties: {} },
             handler: async () => {
                 if (IS_WINDOWS) {
@@ -175,10 +175,10 @@ const session = await joinSession({
                     if (!result.ok) {
                         return { textResultForLlm: `Failed to remove Windows daemon task: ${result.stderr}`, resultType: "failure" };
                     }
-                    return "Daemon stopped and disabled. Use clawpilot_daemon_setup to restart.";
+                    return "Daemon stopped and disabled. Use pilotclaw_daemon_setup to restart.";
                 }
                 await stopDisable(`${DAEMON_UNIT}.path`);
-                return "Daemon stopped and disabled. Use clawpilot_daemon_setup to restart.";
+                return "Daemon stopped and disabled. Use pilotclaw_daemon_setup to restart.";
             },
         },
     ],

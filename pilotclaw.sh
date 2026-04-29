@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
-# Clawpilot CLI launcher
+# PilotClaw CLI launcher
 # Wraps Copilot CLI with sensible defaults for autonomous operation.
 #
 # Defaults: autopilot + yolo + resume "main" session + OpenClaw workspace dir
 #
 # Usage:
-#   clawpilot                     # Resume main session (autopilot + yolo)
-#   clawpilot -p "task"           # Non-interactive autonomous run
-#   clawpilot --no-yolo           # Resume without auto-approving tools
-#   clawpilot --no-autopilot      # Resume in interactive mode
-#   clawpilot --session work      # Use a different named session
-#   clawpilot --model gpt-5.5    # Override model
-#   clawpilot -- --any-flag       # Pass arbitrary flags to copilot
+#   pilotclaw                     # Resume main session (autopilot + yolo)
+#   pilotclaw -p "task"           # Non-interactive autonomous run
+#   pilotclaw --no-yolo           # Resume without auto-approving tools
+#   pilotclaw --no-autopilot      # Resume in interactive mode
+#   pilotclaw --session work      # Use a different named session
+#   pilotclaw --model gpt-5.5    # Override model
+#   pilotclaw -- --any-flag       # Pass arbitrary flags to copilot
 
 SESSION_NAME="main"
 AUTOPILOT=true
@@ -52,13 +52,13 @@ except:
 }
 
 sync_openclaw_agents() {
-    local sync_script="${HOME}/.clawpilot/scripts/import-openclaw-agents.mjs"
+    local sync_script="${HOME}/.pilotclaw/scripts/import-openclaw-agents.mjs"
     if [[ -f "$sync_script" ]] && command -v node &>/dev/null; then
         node "$sync_script" >/dev/null 2>&1 || true
     fi
 }
 
-# Parse clawpilot-specific flags (before --)
+# Parse pilotclaw-specific flags (before --)
 COPILOT_EXTRA_ARGS=()
 while [[ $# -gt 0 ]]; do
     case "$1" in

@@ -72,15 +72,15 @@ function autoApproveSystemRunParams(params = {}, timeoutMs) {
                 ? params.rawCommand
                 : params.commandText;
     if (!command) throw new Error("system.run requires params.command, params.argv, or params.rawCommand.");
-    const runId = normalize(params.runId) || `clawpilot-node-${Date.now()}-${randomUUID().slice(0, 8)}`;
+    const runId = normalize(params.runId) || `pilotclaw-node-${Date.now()}-${randomUUID().slice(0, 8)}`;
     return {
         command,
         ...(params.rawCommand ? { rawCommand: params.rawCommand } : {}),
         ...(params.cwd ? { cwd: params.cwd } : {}),
         ...(params.env && typeof params.env === "object" ? { env: params.env } : {}),
         timeoutMs,
-        agentId: params.agentId || "clawpilot",
-        sessionKey: params.sessionKey || "clawpilot-node",
+        agentId: params.agentId || "pilotclaw",
+        sessionKey: params.sessionKey || "pilotclaw-node",
         approved: true,
         approvalDecision: "allow-once",
         runId,
@@ -104,8 +104,8 @@ async function runSystemCommand({ nodeId, params, timeoutMs, idempotencyKey }) {
             command,
             ...(params.rawCommand ? { rawCommand: params.rawCommand } : {}),
             ...(params.cwd ? { cwd: params.cwd } : {}),
-            agentId: params.agentId || "clawpilot",
-            sessionKey: params.sessionKey || "clawpilot-node",
+            agentId: params.agentId || "pilotclaw",
+            sessionKey: params.sessionKey || "pilotclaw-node",
         },
         timeoutMs: Math.min(timeoutMs, 20000),
         idempotencyKey: randomUUID(),
@@ -120,8 +120,8 @@ async function runSystemCommand({ nodeId, params, timeoutMs, idempotencyKey }) {
             ...autoApproveSystemRunParams({ ...params, command: plan.argv, rawCommand: plan.commandText }, timeoutMs),
             systemRunPlan: plan,
             ...(plan.cwd ? { cwd: plan.cwd } : {}),
-            agentId: plan.agentId || params.agentId || "clawpilot",
-            sessionKey: plan.sessionKey || params.sessionKey || "clawpilot-node",
+            agentId: plan.agentId || params.agentId || "pilotclaw",
+            sessionKey: plan.sessionKey || params.sessionKey || "pilotclaw-node",
         },
         timeoutMs,
         idempotencyKey,

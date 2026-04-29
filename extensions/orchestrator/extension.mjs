@@ -1,11 +1,11 @@
-// Clawpilot CLI — orchestrator extension
+// PilotClaw CLI — orchestrator extension
 // Self-driving task engine. Reads ORCHESTRATION.md/ROADMAP.md, picks tasks, spawns agents.
 import { joinSession } from "@github/copilot-sdk/extension";
 import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { homedir } from "node:os";
 
-const STATE_DIR = join(homedir(), ".clawpilot", "orchestrator");
+const STATE_DIR = join(homedir(), ".pilotclaw", "orchestrator");
 const STATE_FILE = join(STATE_DIR, "state.json");
 
 async function ensureDir(dir) {
@@ -28,7 +28,7 @@ async function saveState(state) {
 const session = await joinSession({
     tools: [
         {
-            name: "clawpilot_orchestrator_status",
+            name: "pilotclaw_orchestrator_status",
             description: "Show the current orchestrator state: what task is running, queue, and history.",
             parameters: { type: "object", properties: {} },
             handler: async () => {
@@ -53,7 +53,7 @@ const session = await joinSession({
             },
         },
         {
-            name: "clawpilot_orchestrator_steer",
+            name: "pilotclaw_orchestrator_steer",
             description: "Give the orchestrator a directive to change focus, priority, or behavior.",
             parameters: {
                 type: "object",
@@ -77,7 +77,7 @@ const session = await joinSession({
             },
         },
         {
-            name: "clawpilot_orchestrator_pause",
+            name: "pilotclaw_orchestrator_pause",
             description: "Pause the orchestrator. It will finish the current task but not pick a new one.",
             parameters: { type: "object", properties: {} },
             handler: async () => {
@@ -85,11 +85,11 @@ const session = await joinSession({
                 state.status = "paused";
                 state.pausedAt = new Date().toISOString();
                 await saveState(state);
-                return "Orchestrator paused. Use clawpilot_orchestrator_resume to restart.";
+                return "Orchestrator paused. Use pilotclaw_orchestrator_resume to restart.";
             },
         },
         {
-            name: "clawpilot_orchestrator_resume",
+            name: "pilotclaw_orchestrator_resume",
             description: "Resume the orchestrator after a pause.",
             parameters: { type: "object", properties: {} },
             handler: async () => {
@@ -101,11 +101,11 @@ const session = await joinSession({
             },
         },
         {
-            name: "clawpilot_orchestrator_run",
+            name: "pilotclaw_orchestrator_run",
             description:
                 "Trigger an orchestration cycle: read ORCHESTRATION.md and ROADMAP.md, pick the highest priority unblocked task, " +
                 "and spawn a background Copilot session to work on it. " +
-                "Use clawpilot_schedule to make this run automatically (e.g., nightly).",
+                "Use pilotclaw_schedule to make this run automatically (e.g., nightly).",
             parameters: {
                 type: "object",
                 properties: {
@@ -122,7 +122,7 @@ const session = await joinSession({
             handler: async (args) => {
                 const state = await loadState();
                 if (state.status === "paused") {
-                    return "Orchestrator is paused. Use clawpilot_orchestrator_resume first.";
+                    return "Orchestrator is paused. Use pilotclaw_orchestrator_resume first.";
                 }
                 if (state.status === "running" && state.currentTask) {
                     return `Orchestrator is already running task '${state.currentTask.name}'. Wait for it to complete or steer it.`;
@@ -143,7 +143,7 @@ const session = await joinSession({
                 // Build a prompt for the spawned session to pick and execute a task
                 const directives = (state.directives || []).map((d) => d.directive).join("\n");
                 const prompt =
-                    `You are the Clawpilot Orchestrator. Your job is to pick the highest-priority unblocked task and execute it.\n\n` +
+                    `You are the PilotClaw Orchestrator. Your job is to pick the highest-priority unblocked task and execute it.\n\n` +
                     `## ORCHESTRATION.md\n${orchestration}\n\n` +
                     `## ROADMAP.md\n${roadmap}\n\n` +
                     (directives ? `## Active Directives\n${directives}\n\n` : "") +
@@ -162,7 +162,7 @@ const session = await joinSession({
                 };
                 await saveState(state);
 
-                return `Orchestration cycle ready. Use clawpilot_spawn to launch:\n\nclawpilot_spawn(name: "orchestrator", prompt: <the generated prompt>)\n\nGenerated prompt (${prompt.length} chars) analyzes ORCHESTRATION.md + ROADMAP.md to pick and execute the next task.`;
+                return `Orchestration cycle ready. Use pilotclaw_spawn to launch:\n\npilotclaw_spawn(name: "orchestrator", prompt: <the generated prompt>)\n\nGenerated prompt (${prompt.length} chars) analyzes ORCHESTRATION.md + ROADMAP.md to pick and execute the next task.`;
             },
         },
     ],

@@ -1,6 +1,6 @@
-# Clawpilot CLI — Complete Usage Guide
+# PilotClaw CLI — Complete Usage Guide
 
-> 10 extensions that add background sessions, scheduling, heartbeats, messaging, an OpenClaw-compatible gateway, memory, secrets, orchestration, and error resilience to GitHub Copilot CLI.
+> Mission control for GitHub Copilot CLI: 10 extensions for persistent agents, background sessions, scheduling, heartbeats, messaging, OpenClaw-compatible gateway access, memory, secrets, orchestration, and error resilience.
 
 ---
 
@@ -24,32 +24,33 @@
 
 ## Installation
 
-### Install Clawpilot
+### Install PilotClaw
 
 Linux:
 
 ```bash
-git clone https://github.com/jduartedj/clawpilot.git ~/.clawpilot
-cd ~/.clawpilot
+git clone https://github.com/jduartedj/pilotclaw.git ~/.pilotclaw/src
+cd ~/.pilotclaw/src
 ./install.sh
 ```
 
 Windows:
 
 ```powershell
-git clone https://github.com/jduartedj/clawpilot.git $env:LOCALAPPDATA\Clawpilot\src
-cd $env:LOCALAPPDATA\Clawpilot\src
+git clone https://github.com/jduartedj/pilotclaw.git $env:LOCALAPPDATA\PilotClaw\src
+cd $env:LOCALAPPDATA\PilotClaw\src
 .\install.ps1
 ```
 
 The installer automatically:
 - Installs GitHub Copilot CLI if not found on Linux; Windows currently requires Copilot CLI to already be on PATH
 - Copies all 10 extensions to `~/.copilot/extensions/`
-- Creates state directories in `~/.clawpilot/` on Linux or `%LOCALAPPDATA%\Clawpilot` on Windows
-- Links or installs the `clawpilot` launcher (`~/.local/bin/` on Linux, `%LOCALAPPDATA%\Clawpilot\bin` on Windows)
+- Creates state directories in `~/.pilotclaw/` on Linux or `%LOCALAPPDATA%\PilotClaw` on Windows
+- Links or installs the `pilotclaw` launcher (`~/.local/bin/` on Linux, `%LOCALAPPDATA%\PilotClaw\bin` on Windows)
+- Migrates pre-rename Clawpilot state/extensions/services/tasks and installs a `clawpilot` compatibility launcher alias
 - Reports any missing optional dependencies (sqlite3, age)
 
-Then restart Copilot CLI or run `/clear`. All `clawpilot_*` tools become available.
+Then restart Copilot CLI or run `/clear`. All `pilotclaw_*` tools become available.
 
 ### Optional dependencies
 
@@ -68,13 +69,15 @@ Then restart Copilot CLI or run `/clear`. All `clawpilot_*` tools become availab
 Linux:
 
 ```bash
+cd ~/.pilotclaw/src && git pull && ./install.sh
+# Existing pre-rename checkout:
 cd ~/.clawpilot && git pull && ./install.sh
 ```
 
 Windows:
 
 ```powershell
-cd $env:LOCALAPPDATA\Clawpilot\src
+cd $env:LOCALAPPDATA\PilotClaw\src
 git pull
 .\install.ps1
 ```
@@ -84,34 +87,34 @@ git pull
 Linux:
 
 ```bash
-cd ~/.clawpilot && ./uninstall.sh
-# Optionally remove state: rm -rf ~/.clawpilot
+cd ~/.pilotclaw/src && ./uninstall.sh
+# Optionally remove state: rm -rf ~/.pilotclaw
 ```
 
 Windows:
 
 ```powershell
-cd $env:LOCALAPPDATA\Clawpilot\src
+cd $env:LOCALAPPDATA\PilotClaw\src
 .\uninstall.ps1
 # Optionally remove state after backing up anything important:
-# Remove-Item -Recurse -Force $env:LOCALAPPDATA\Clawpilot
+# Remove-Item -Recurse -Force $env:LOCALAPPDATA\PilotClaw
 ```
 
-### The `clawpilot` Command
+### The `pilotclaw` Command
 
-After install, you get a `clawpilot` command (in `~/.local/bin/`):
+After install, you get a `pilotclaw` command (in `~/.local/bin/`):
 
 ```bash
-clawpilot              # Resume main session (autopilot + yolo mode)
-clawpilot --no-yolo    # Resume without auto-approving tools
-clawpilot --no-autopilot  # Resume in interactive mode
-clawpilot --session work  # Use a different named session
-clawpilot -p "do X"   # Non-interactive autonomous run
-clawpilot --model X    # Resume with model override
+pilotclaw              # Resume main session (autopilot + yolo mode)
+pilotclaw --no-yolo    # Resume without auto-approving tools
+pilotclaw --no-autopilot  # Resume in interactive mode
+pilotclaw --session work  # Use a different named session
+pilotclaw -p "do X"   # Non-interactive autonomous run
+pilotclaw --model X    # Resume with model override
 copilot                # Normal Copilot CLI (starts a new session)
 ```
 
-The `clawpilot` command wraps `copilot` with these defaults:
+The `pilotclaw` command wraps `copilot` with these defaults:
 - `--resume="main"` — always resume the same persistent session
 - `--autopilot` — agent continues working without pausing for approval at each step
 - `--allow-all` — auto-approve all tools, paths, and URLs (yolo mode)
@@ -120,7 +123,7 @@ Use `--no-yolo` and `--no-autopilot` to disable these for more cautious work. Us
 
 ### OpenClaw Agent Sync
 
-On install and on every `clawpilot` start, Clawpilot reads `~/.openclaw/openclaw.json` and imports OpenClaw agents that have an `agentDir` with a `SOUL.md` into Copilot's user custom-agent directory:
+On install and on every `pilotclaw` start, PilotClaw reads `~/.openclaw/openclaw.json` and imports OpenClaw agents that have an `agentDir` with a `SOUL.md` into Copilot's user custom-agent directory:
 
 ```text
 ~/.copilot/agents/<agent-id>.agent.md
@@ -145,9 +148,9 @@ Already-running Copilot CLI sessions may need `/clear` or a restart before newly
 
 ## ⚠️ Important: Spawn Long Tasks
 
-**If you quit the CLI, any in-progress direct work stops.** However, Clawpilot's auto-resume safety net detects this and spawns a background session to continue the work (see below). For guaranteed background execution, use `clawpilot_spawn` explicitly:
+**If you quit the CLI, any in-progress direct work stops.** However, PilotClaw's auto-resume safety net detects this and spawns a background session to continue the work (see below). For guaranteed background execution, use `pilotclaw_spawn` explicitly:
 
-**Rule of thumb:** If a task might take more than a few minutes, always use `clawpilot_spawn` instead of asking directly:
+**Rule of thumb:** If a task might take more than a few minutes, always use `pilotclaw_spawn` instead of asking directly:
 
 ```
 # ❌ Risky — dies if you quit
@@ -159,7 +162,7 @@ Already-running Copilot CLI sessions may need `/clear` or a restart before newly
 
 ### Auto-Resume (safety net)
 
-If you quit the CLI while the agent is mid-task, Clawpilot automatically:
+If you quit the CLI while the agent is mid-task, PilotClaw automatically:
 1. Detects the agent was still working (tools in flight or response not yet complete)
 2. Captures your last prompt
 3. Spawns a background `copilot -p` session to continue the interrupted work
@@ -169,7 +172,7 @@ If you quit the CLI while the agent is mid-task, Clawpilot automatically:
 **If the background session finished:**
 The output is injected into your new session as context. The agent reviews it and tells you what was accomplished:
 ```
-[Clawpilot Auto-Resume] Your last session was interrupted.
+[PilotClaw Auto-Resume] Your last session was interrupted.
 A background session completed the task while you were away.
 
 Original task: Refactor the entire auth module
@@ -179,7 +182,7 @@ Background session output: ...
 **If the background session is still running:**
 It's stopped and handed back to you with its partial output. The agent picks up where it left off, interactively:
 ```
-[Clawpilot Auto-Resume] Your last session was interrupted.
+[PilotClaw Auto-Resume] Your last session was interrupted.
 A background session was working on it but you're back now —
 it has been stopped and handed back to you.
 
@@ -187,7 +190,7 @@ Original task: Refactor the entire auth module
 Progress from background session: ...
 ```
 
-This is a **best-effort safety net** — the spawned session gets the original prompt but not the full conversation context. For guaranteed results, use `clawpilot_spawn` explicitly.
+This is a **best-effort safety net** — the spawned session gets the original prompt but not the full conversation context. For guaranteed results, use `pilotclaw_spawn` explicitly.
 
 ---
 
@@ -197,7 +200,7 @@ Launch autonomous Copilot CLI sessions in the background. Each session runs `cop
 
 ### Tools
 
-#### `clawpilot_spawn`
+#### `pilotclaw_spawn`
 
 Launch a background session.
 
@@ -213,11 +216,11 @@ Launch a background session.
 > Spawn a session named "fix-tests" to find and fix all failing unit tests in the project
 ```
 
-#### `clawpilot_spawn_list`
+#### `pilotclaw_spawn_list`
 
 List all spawned sessions with status (🟢 running, ✅ completed, ❌ failed), PID, duration, and model.
 
-#### `clawpilot_spawn_read`
+#### `pilotclaw_spawn_read`
 
 Read the output log of a spawned session.
 
@@ -226,7 +229,7 @@ Read the output log of a spawned session.
 | `name` | ✅ | Session name |
 | `tail` | | Lines from end (default: 50) |
 
-#### `clawpilot_spawn_kill`
+#### `pilotclaw_spawn_kill`
 
 Kill a running session by name.
 
@@ -234,7 +237,7 @@ Kill a running session by name.
 |-----------|----------|-------------|
 | `name` | ✅ | Session name to kill |
 
-#### `clawpilot_spawn_clean`
+#### `pilotclaw_spawn_clean`
 
 Remove completed/failed/killed sessions and their logs.
 
@@ -247,7 +250,7 @@ Remove completed/failed/killed sessions and their logs.
 When you start a new Copilot CLI session, the spawn extension automatically checks for completed background sessions and injects a summary into context. You'll see something like:
 
 ```
-[Clawpilot] 2 background session(s) finished since last check:
+[PilotClaw] 2 background session(s) finished since last check:
 • fix-tests: completed (Find and fix all failing unit tests...)
 • refactor-auth: completed (Refactor the auth module to use...)
 ```
@@ -255,7 +258,7 @@ When you start a new Copilot CLI session, the spawn extension automatically chec
 ### How It Works
 
 1. Runs a detached `copilot -p "prompt" --allow-all --autopilot --name "spawn-{name}" --silent --no-ask-user`
-2. Output captured to the Clawpilot spawned log path (`spawned/{name}/output.log`)
+2. Output captured to the PilotClaw spawned log path (`spawned/{name}/output.log`)
 3. PID and metadata stored in `spawned/{name}/meta.json`
 4. Process runs detached — survives parent CLI exit; Windows kills process trees with `taskkill /T /F /PID`
 
@@ -267,7 +270,7 @@ Schedule recurring Copilot CLI tasks. Linux uses systemd user timers; Windows us
 
 ### Tools
 
-#### `clawpilot_schedule`
+#### `pilotclaw_schedule`
 
 Create a scheduled task.
 
@@ -299,9 +302,9 @@ Windows currently supports: `hourly`, `daily`, `weekly`, `*-*-* HH:MM[:SS]`, `Mo
 > Schedule "daily-review" to run daily at 8am: review all PRs and summarize findings
 ```
 
-#### `clawpilot_schedule_list`
+#### `pilotclaw_schedule_list`
 
-List all native Clawpilot timers with next run time and any existing OpenClaw crons discovered in `~/.openclaw/cron`.
+List all native PilotClaw timers with next run time and any existing OpenClaw crons discovered in `~/.openclaw/cron`.
 
 OpenClaw jobs are shown as read-only imported refs:
 
@@ -309,19 +312,19 @@ OpenClaw jobs are shown as read-only imported refs:
 openclaw:<job-id>
 ```
 
-They are not duplicated into systemd timers, so Clawpilot will not double-run existing OpenClaw jobs. Use the `openclaw:<job-id>` ref with `clawpilot_schedule_logs` to read the OpenClaw JSONL run log, or with `clawpilot_schedule_run_now` to manually run the same prompt through Clawpilot.
+They are not duplicated into systemd timers, so PilotClaw will not double-run existing OpenClaw jobs. Use the `openclaw:<job-id>` ref with `pilotclaw_schedule_logs` to read the OpenClaw JSONL run log, or with `pilotclaw_schedule_run_now` to manually run the same prompt through PilotClaw.
 
-#### `clawpilot_schedule_cancel`
+#### `pilotclaw_schedule_cancel`
 
 Stop, disable, and remove a scheduled task and its native scheduler definition.
 
-Imported `openclaw:<job-id>` refs are read-only in Clawpilot. Disable or delete those jobs with OpenClaw's cron tools.
+Imported `openclaw:<job-id>` refs are read-only in PilotClaw. Disable or delete those jobs with OpenClaw's cron tools.
 
 | Parameter | Required | Description |
 |-----------|----------|-------------|
 | `name` | ✅ | Task name to cancel |
 
-#### `clawpilot_schedule_run_now`
+#### `pilotclaw_schedule_run_now`
 
 Manually trigger a scheduled task immediately.
 
@@ -329,9 +332,9 @@ Manually trigger a scheduled task immediately.
 |-----------|----------|-------------|
 | `name` | ✅ | Task name to trigger |
 
-For imported OpenClaw jobs, pass `openclaw:<job-id>` or `openclaw:<job-name>`. Clawpilot runs the original OpenClaw cron prompt through `copilot -p`; it does not modify the OpenClaw cron definition.
+For imported OpenClaw jobs, pass `openclaw:<job-id>` or `openclaw:<job-name>`. PilotClaw runs the original OpenClaw cron prompt through `copilot -p`; it does not modify the OpenClaw cron definition.
 
-#### `clawpilot_schedule_logs`
+#### `pilotclaw_schedule_logs`
 
 View logs from a scheduled task's recent runs.
 
@@ -344,9 +347,9 @@ For imported OpenClaw jobs, pass `openclaw:<job-id>` to tail `~/.openclaw/cron/r
 
 ### How It Works
 
-1. Prompt written to Clawpilot state (`scheduler/{name}.prompt`) instead of being embedded inline
-2. Linux creates `~/.config/systemd/user/clawpilot-{name}.service` + `.timer`
-3. Windows creates a `Clawpilot-sched-{name}` Task Scheduler task that calls a generated PowerShell runner
+1. Prompt written to PilotClaw state (`scheduler/{name}.prompt`) instead of being embedded inline
+2. Linux creates `~/.config/systemd/user/pilotclaw-{name}.service` + `.timer`
+3. Windows creates a `PilotClaw-sched-{name}` Task Scheduler task that calls a generated PowerShell runner
 4. Linux logs go to journald; Windows logs go to `scheduler/{name}.log`
 6. OpenClaw cron metadata is read from `~/.openclaw/cron/jobs.json` and `jobs-state.json`; logs are read from `~/.openclaw/cron/runs/`
 
@@ -358,7 +361,7 @@ Schedule background checks that report findings when you start a new Copilot CLI
 
 ### Tools
 
-#### `clawpilot_heartbeat_add`
+#### `pilotclaw_heartbeat_add`
 
 Add a proactive check.
 
@@ -373,7 +376,7 @@ Add a proactive check.
 > Add a heartbeat named "email" running hourly: check Gmail for urgent emails and summarize any that need attention
 ```
 
-#### `clawpilot_heartbeat_remove`
+#### `pilotclaw_heartbeat_remove`
 
 Remove a heartbeat check and its native timer/task.
 
@@ -381,11 +384,11 @@ Remove a heartbeat check and its native timer/task.
 |-----------|----------|-------------|
 | `name` | ✅ | Check name to remove |
 
-#### `clawpilot_heartbeat_status`
+#### `pilotclaw_heartbeat_status`
 
 Show all checks with their schedule, timer status, and any pending results.
 
-#### `clawpilot_heartbeat_ack`
+#### `pilotclaw_heartbeat_ack`
 
 Clear pending heartbeat results.
 
@@ -398,7 +401,7 @@ Clear pending heartbeat results.
 On every session start, the heartbeat extension injects pending results as context:
 
 ```
-[Clawpilot Heartbeat] 3 result(s) since last session:
+[PilotClaw Heartbeat] 3 result(s) since last session:
 
 🔴 URGENT (1):
 • email: 2 urgent emails from CTO about production outage
@@ -412,7 +415,7 @@ On every session start, the heartbeat extension injects pending results as conte
 ### How It Works
 
 1. Each heartbeat is a systemd timer on Linux or Task Scheduler task on Windows that runs `copilot -p` with instructions to write a JSON result
-2. Results written to the Clawpilot heartbeat results directory (`~/.clawpilot/...` on Linux, `%LOCALAPPDATA%\Clawpilot\...` on Windows)
+2. Results written to the PilotClaw heartbeat results directory (`~/.pilotclaw/...` on Linux, `%LOCALAPPDATA%\PilotClaw\...` on Windows)
 3. On session start, pending results are read and injected as `additionalContext`
 4. Urgent items (`"urgent": true`) are highlighted with 🔴
 
@@ -432,7 +435,7 @@ Send and read messages on Telegram, Discord, and Slack using direct API calls. Z
 
 ### Tools
 
-#### `clawpilot_channel_setup`
+#### `pilotclaw_channel_setup`
 
 Configure a messaging channel. Validates the token on setup.
 
@@ -471,7 +474,7 @@ Configure a messaging channel. Validates the token on setup.
 > Set up Slack with webhook https://hooks.slack.com/services/T.../B.../xxx
 ```
 
-#### `clawpilot_send_message`
+#### `pilotclaw_send_message`
 
 Send a message to a configured channel.
 
@@ -481,7 +484,7 @@ Send a message to a configured channel.
 | `target` | ✅ | Chat ID, channel ID, or channel name |
 | `message` | ✅ | Message text |
 
-#### `clawpilot_read_messages`
+#### `pilotclaw_read_messages`
 
 Read recent messages from a channel.
 
@@ -491,11 +494,11 @@ Read recent messages from a channel.
 | `target` | | Chat/channel ID (optional for Telegram, required for Discord/Slack) |
 | `count` | | Number of messages (default: 10) |
 
-#### `clawpilot_channel_status`
+#### `pilotclaw_channel_status`
 
 Show all configured channels with live connection status. Validates tokens against the platform API.
 
-#### `clawpilot_channel_remove`
+#### `pilotclaw_channel_remove`
 
 Remove a configured channel.
 
@@ -505,7 +508,7 @@ Remove a configured channel.
 
 ### Security
 
-- Tokens stored in `~/.clawpilot/channels/config.json` with `0600` permissions
+- Tokens stored in `~/.pilotclaw/channels/config.json` with `0600` permissions
 - Directory created with `0700` permissions
 - Tokens never leave your machine — direct API calls only
 
@@ -517,20 +520,20 @@ A native daemon watcher for the inbox directory. Linux uses a systemd `.path` un
 
 ### Tools
 
-#### `clawpilot_daemon_setup`
+#### `pilotclaw_daemon_setup`
 
 Install the native watcher and handler script. Linux creates:
-- `~/.config/systemd/user/clawpilot-daemon.path` (watches inbox)
-- `~/.config/systemd/user/clawpilot-daemon.service` (handler)
+- `~/.config/systemd/user/pilotclaw-daemon.path` (watches inbox)
+- `~/.config/systemd/user/pilotclaw-daemon.service` (handler)
 - shared Node daemon handler under `~/.copilot/extensions/_lib/`
 
-Windows creates a `Clawpilot-daemon` logon task that runs the same shared Node daemon handler with `--watch`.
+Windows creates a `PilotClaw-daemon` logon task that runs the same shared Node daemon handler with `--watch`.
 
-#### `clawpilot_daemon_status`
+#### `pilotclaw_daemon_status`
 
 Show daemon status (active/inactive), inbox queue, and processed count.
 
-#### `clawpilot_daemon_inbox`
+#### `pilotclaw_daemon_inbox`
 
 Queue a task for the daemon to process.
 
@@ -548,13 +551,13 @@ Queue a task for the daemon to process.
 
 The daemon picks up the file and runs `copilot -p "prompt" --allow-all --autopilot`.
 
-#### `clawpilot_daemon_stop`
+#### `pilotclaw_daemon_stop`
 
 Stop and disable the daemon.
 
 ### How It Works
 
-1. Native watcher monitors the Clawpilot inbox for new `.json` files
+1. Native watcher monitors the PilotClaw inbox for new `.json` files
 2. Handler atomically moves each file to `processing/` to avoid duplicate `fs.watch` events
 3. Handler reads `{prompt, model?, cwd?}` from the JSON file
 4. Spawns a detached `copilot -p` session for each message
@@ -568,47 +571,47 @@ You can also queue tasks by writing JSON files directly:
 Linux:
 
 ```bash
-echo '{"prompt":"Check disk space and report"}' > ~/.clawpilot/inbox/check-disk.json
+echo '{"prompt":"Check disk space and report"}' > ~/.pilotclaw/inbox/check-disk.json
 ```
 
 Windows PowerShell:
 
 ```powershell
-'{"prompt":"Check disk space and report"}' | Set-Content -Encoding utf8 $env:LOCALAPPDATA\Clawpilot\inbox\check-disk.json
+'{"prompt":"Check disk space and report"}' | Set-Content -Encoding utf8 $env:LOCALAPPDATA\PilotClaw\inbox\check-disk.json
 ```
 
 ---
 
 ## 🌉 gateway — OpenClaw Compatibility
 
-Runs a compatibility gateway so clients such as Jackson can connect to Clawpilot with an OpenClaw-style interface. Linux uses a systemd user service; Windows uses a `Clawpilot-gateway` Task Scheduler logon task. macOS lifecycle support is intentionally parked until the macOS platform plan resumes.
+Runs a compatibility gateway so clients such as Jackson can connect to PilotClaw with an OpenClaw-style interface. Linux uses a systemd user service; Windows uses a `PilotClaw-gateway` Task Scheduler logon task. macOS lifecycle support is intentionally parked until the macOS platform plan resumes.
 
-The gateway defaults to `127.0.0.1:18789`, matching OpenClaw's local gateway target. If that port is already occupied, set `CLAWPILOT_GATEWAY_PORT` before starting the service. The gateway writes runtime metadata, including the bearer token, under the platform state directory:
+The gateway defaults to `127.0.0.1:18789`, matching OpenClaw's local gateway target. If that port is already occupied, set `PILOTCLAW_GATEWAY_PORT` before starting the service. The gateway writes runtime metadata, including the bearer token, under the platform state directory:
 
 ```text
-~/.clawpilot/gateway/runtime/runtime.json                 # Linux
-%LOCALAPPDATA%\Clawpilot\gateway\runtime\runtime.json     # Windows
+~/.pilotclaw/gateway/runtime/runtime.json                 # Linux
+%LOCALAPPDATA%\PilotClaw\gateway\runtime\runtime.json     # Windows
 ```
 
 ### Tools
 
-#### `clawpilot_gateway_start`
+#### `pilotclaw_gateway_start`
 
 Install and start the compatibility gateway.
 
-#### `clawpilot_gateway_status`
+#### `pilotclaw_gateway_status`
 
 Show platform service/task state, URL, PID, and bearer token.
 
-#### `clawpilot_gateway_stop`
+#### `pilotclaw_gateway_stop`
 
 Stop and disable the gateway.
 
-#### `clawpilot_gateway_url`
+#### `pilotclaw_gateway_url`
 
 Print the current URL and bearer token for clients.
 
-#### `clawpilot_gateway_logs`
+#### `pilotclaw_gateway_logs`
 
 Show recent gateway logs.
 
@@ -627,20 +630,20 @@ Show recent gateway logs.
 
 ### Native node hub
 
-Clawpilot can accept OpenClaw-compatible node WebSocket connections directly; it does not require an OpenClaw gateway process. A node connects with `role: "node"` and the Clawpilot gateway bearer token in `connect.params.auth.token`. After that first gateway-key auth, Clawpilot treats the node as fully trusted and routes authorized operator `node.invoke` calls to it without a separate Clawpilot permission layer.
+PilotClaw can accept OpenClaw-compatible node WebSocket connections directly; it does not require an OpenClaw gateway process. A node connects with `role: "node"` and the PilotClaw gateway bearer token in `connect.params.auth.token`. After that first gateway-key auth, PilotClaw treats the node as fully trusted and routes authorized operator `node.invoke` calls to it without a separate PilotClaw permission layer.
 
-Supported node RPC methods include `node.list`, `node.status`, `node.describe`, `node.invoke`, `node.exec`, `node.invoke.result`, `node.event`, `node.pending.enqueue`, `node.pending.drain`, `node.pending.pull`, and `node.pending.ack`. `node.exec` is a convenience alias for `system.run`: Clawpilot sends `system.run.prepare`, then sends `system.run` with an auto-approved `allow-once` decision to the connected node.
+Supported node RPC methods include `node.list`, `node.status`, `node.describe`, `node.invoke`, `node.exec`, `node.invoke.result`, `node.event`, `node.pending.enqueue`, `node.pending.drain`, `node.pending.pull`, and `node.pending.ack`. `node.exec` is a convenience alias for `system.run`: PilotClaw sends `system.run.prepare`, then sends `system.run` with an auto-approved `allow-once` decision to the connected node.
 
 Gateway state for known nodes is stored under:
 
 ```text
-~/.clawpilot/gateway/nodes/known.json                 # Linux
-%LOCALAPPDATA%\Clawpilot\gateway\nodes\known.json     # Windows
+~/.pilotclaw/gateway/nodes/known.json                 # Linux
+%LOCALAPPDATA%\PilotClaw\gateway\nodes\known.json     # Windows
 ```
 
-The gateway still binds to loopback by default. For LAN nodes, explicitly set `CLAWPILOT_GATEWAY_BIND=0.0.0.0`, `CLAWPILOT_GATEWAY_ALLOW_PUBLIC=1`, `CLAWPILOT_GATEWAY_PORT=<port>`, and a strong `CLAWPILOT_GATEWAY_TOKEN`, then point the node at the host and port.
+The gateway still binds to loopback by default. For LAN nodes, explicitly set `PILOTCLAW_GATEWAY_BIND=0.0.0.0`, `PILOTCLAW_GATEWAY_ALLOW_PUBLIC=1`, `PILOTCLAW_GATEWAY_PORT=<port>`, and a strong `PILOTCLAW_GATEWAY_TOKEN`, then point the node at the host and port.
 
-Parked features such as voice, vault secret values, perfect token streaming, and Clawpilot-native voice/canvas UX parity return explicit unsupported/capability responses instead of crashing. Canvas/screen/camera/location can be exposed through connected nodes when the node advertises the relevant command.
+Parked features such as voice, vault secret values, perfect token streaming, and PilotClaw-native voice/canvas UX parity return explicit unsupported/capability responses instead of crashing. Canvas/screen/camera/location can be exposed through connected nodes when the node advertises the relevant command.
 
 ---
 
@@ -650,7 +653,7 @@ Reads `ORCHESTRATION.md` and `ROADMAP.md` to pick and execute the highest-priori
 
 ### Tools
 
-#### `clawpilot_orchestrator_run`
+#### `pilotclaw_orchestrator_run`
 
 Trigger an orchestration cycle. Reads orchestration files and generates a prompt for the next task.
 
@@ -664,11 +667,11 @@ Trigger an orchestration cycle. Reads orchestration files and generates a prompt
 > Run an orchestration cycle to pick and execute the next task
 ```
 
-#### `clawpilot_orchestrator_status`
+#### `pilotclaw_orchestrator_status`
 
 Show current orchestrator state: status (idle/running/paused), current task, and recent history.
 
-#### `clawpilot_orchestrator_steer`
+#### `pilotclaw_orchestrator_steer`
 
 Give the orchestrator a directive to change priorities.
 
@@ -676,11 +679,11 @@ Give the orchestrator a directive to change priorities.
 |-----------|----------|-------------|
 | `directive` | ✅ | Steering instruction (e.g., `focus on trading bot`, `skip website tasks`) |
 
-#### `clawpilot_orchestrator_pause`
+#### `pilotclaw_orchestrator_pause`
 
 Pause orchestration. Current task finishes, but no new tasks are picked.
 
-#### `clawpilot_orchestrator_resume`
+#### `pilotclaw_orchestrator_resume`
 
 Resume orchestration after a pause.
 
@@ -699,7 +702,7 @@ Searchable memory database with FTS5 full-text search. Active daily memory files
 
 ### Tools
 
-#### `clawpilot_memory_search`
+#### `pilotclaw_memory_search`
 
 Full-text search across all stored memories.
 
@@ -718,7 +721,7 @@ Full-text search across all stored memories.
 | NOT | `trading NOT crypto` | Exclude word |
 | Phrase | `"code review"` | Exact phrase |
 
-#### `clawpilot_memory_store`
+#### `pilotclaw_memory_store`
 
 Store a memory or decision.
 
@@ -728,7 +731,7 @@ Store a memory or decision.
 | `tags` | | Comma-separated tags |
 | `date` | | YYYY-MM-DD (default: today) |
 
-#### `clawpilot_memory_recent`
+#### `pilotclaw_memory_recent`
 
 Retrieve recent memories from the database.
 
@@ -737,7 +740,7 @@ Retrieve recent memories from the database.
 | `days` | | Lookback period, 1–3650 (default: 30) |
 | `limit` | | Max results, 1–100 (default: 20) |
 
-#### `clawpilot_memory_rotate`
+#### `pilotclaw_memory_rotate`
 
 Rotate daily memory files older than 7 days into the database. Files in `~/clawd/memory/` matching `YYYY-MM-DD*.md` are ingested and deleted.
 
@@ -752,7 +755,7 @@ memories(id, date, source, content, tags, created_at)  -- with FTS5 index
 sessions_log(id, name, summary, started_at, ended_at, model, cwd)
 ```
 
-Database location: `~/.clawpilot/memory.db`
+Database location: `~/.pilotclaw/memory.db`
 
 ---
 
@@ -768,7 +771,7 @@ sudo apt install age
 
 ### Tools
 
-#### `clawpilot_vault_set`
+#### `pilotclaw_vault_set`
 
 Encrypt and store a secret.
 
@@ -777,7 +780,7 @@ Encrypt and store a secret.
 | `key` | ✅ | Secret name (e.g., `api-key-openai`) |
 | `value` | ✅ | Secret value to encrypt |
 
-#### `clawpilot_vault_get`
+#### `pilotclaw_vault_get`
 
 Decrypt and retrieve a secret.
 
@@ -785,11 +788,11 @@ Decrypt and retrieve a secret.
 |-----------|----------|-------------|
 | `key` | ✅ | Secret name to retrieve |
 
-#### `clawpilot_vault_list`
+#### `pilotclaw_vault_list`
 
 List all secrets (names and rotation history, not values).
 
-#### `clawpilot_vault_delete`
+#### `pilotclaw_vault_delete`
 
 Delete a secret from the vault.
 
@@ -799,7 +802,7 @@ Delete a secret from the vault.
 
 ### Security
 
-- Encryption key auto-generated on first use (`~/.clawpilot/vault/.age-key`)
+- Encryption key auto-generated on first use (`~/.pilotclaw/vault/.age-key`)
 - Vault directory: `0700` permissions
 - Key file: `0600` permissions
 - Rotation log: `0600` permissions
@@ -822,7 +825,7 @@ The `onErrorOccurred` hook catches recoverable model call failures and retries u
 
 ### Configuration
 
-Create `~/.clawpilot/fallback.json`:
+Create `~/.pilotclaw/fallback.json`:
 
 ```json
 {
@@ -833,7 +836,7 @@ Create `~/.clawpilot/fallback.json`:
 
 ### Tools
 
-#### `clawpilot_fallback_status`
+#### `pilotclaw_fallback_status`
 
 Show current retry configuration and counter.
 
@@ -841,10 +844,10 @@ Show current retry configuration and counter.
 
 ## State & Files
 
-Clawpilot state is isolated from `~/.copilot/`. Linux stores state in `~/.clawpilot/`; Windows stores state in `%LOCALAPPDATA%\Clawpilot` and also creates `~\.clawpilot` as a compatibility directory.
+PilotClaw state is isolated from `~/.copilot/`. Linux stores state in `~/.pilotclaw/`; Windows stores state in `%LOCALAPPDATA%\PilotClaw` and also creates `~\.pilotclaw` as a compatibility directory.
 
 ```
-~/.clawpilot/
+~/.pilotclaw/
 ├── spawned/              # Background session logs + metadata
 │   └── {name}/
 │       ├── output.log    # Session output
@@ -876,21 +879,21 @@ Clawpilot state is isolated from `~/.copilot/`. Linux stores state in `~/.clawpi
 
 ```
 ~/.config/systemd/user/
-├── clawpilot-{name}.service    # Scheduler task
-├── clawpilot-{name}.timer      # Scheduler timer
-├── clawpilot-hb-{name}.service # Heartbeat task
-├── clawpilot-hb-{name}.timer   # Heartbeat timer
-├── clawpilot-daemon.path       # Daemon inbox watcher
-└── clawpilot-daemon.service    # Daemon handler
+├── pilotclaw-{name}.service    # Scheduler task
+├── pilotclaw-{name}.timer      # Scheduler timer
+├── pilotclaw-hb-{name}.service # Heartbeat task
+├── pilotclaw-hb-{name}.timer   # Heartbeat timer
+├── pilotclaw-daemon.path       # Daemon inbox watcher
+└── pilotclaw-daemon.service    # Daemon handler
 ```
 
 ### Windows Scheduled Tasks
 
 ```text
 Task Scheduler Library
-├── Clawpilot-sched-{name}  # Scheduler task
-├── Clawpilot-hb-{name}     # Heartbeat task
-└── Clawpilot-daemon        # Logon inbox watcher
+├── PilotClaw-sched-{name}  # Scheduler task
+├── PilotClaw-hb-{name}     # Heartbeat task
+└── PilotClaw-daemon        # Logon inbox watcher
 ```
 
 ---
@@ -903,7 +906,7 @@ Linux:
 
 ```bash
 # Re-run install (copies extension files)
-cd ~/.clawpilot && ./install.sh
+cd ~/.pilotclaw && ./install.sh
 
 # Restart Copilot CLI
 copilot  # or /clear in existing session
@@ -915,7 +918,7 @@ copilot  # or /clear in existing session
 Windows:
 
 ```powershell
-cd $env:LOCALAPPDATA\Clawpilot\src
+cd $env:LOCALAPPDATA\PilotClaw\src
 .\install.ps1
 copilot
 # In an existing Copilot CLI session, run /clear or restart the process.
@@ -926,14 +929,14 @@ copilot
 Linux:
 
 ```bash
-# List all Clawpilot timers
-systemctl --user list-timers 'clawpilot-*'
+# List all PilotClaw timers
+systemctl --user list-timers 'pilotclaw-*'
 
 # Check a specific timer
-systemctl --user status clawpilot-{name}.timer
+systemctl --user status pilotclaw-{name}.timer
 
 # View logs
-journalctl --user -u clawpilot-{name}.service --no-pager -n 50
+journalctl --user -u pilotclaw-{name}.service --no-pager -n 50
 
 # Reload after manual unit edits
 systemctl --user daemon-reload
@@ -942,10 +945,10 @@ systemctl --user daemon-reload
 Windows:
 
 ```powershell
-schtasks /Query /FO LIST /V | Select-String Clawpilot
-schtasks /Query /TN Clawpilot-sched-{name} /FO LIST /V
-schtasks /Run /TN Clawpilot-sched-{name}
-Get-Content $env:LOCALAPPDATA\Clawpilot\scheduler\{name}.log -Tail 50
+schtasks /Query /FO LIST /V | Select-String PilotClaw
+schtasks /Query /TN PilotClaw-sched-{name} /FO LIST /V
+schtasks /Run /TN PilotClaw-sched-{name}
+Get-Content $env:LOCALAPPDATA\PilotClaw\scheduler\{name}.log -Tail 50
 ```
 
 ### Daemon not picking up messages
@@ -954,29 +957,29 @@ Linux:
 
 ```bash
 # Check daemon status
-systemctl --user status clawpilot-daemon.path
+systemctl --user status pilotclaw-daemon.path
 
 # Check inbox
-ls ~/.clawpilot/inbox/
+ls ~/.pilotclaw/inbox/
 
 # Check handler script
-journalctl --user -u clawpilot-daemon.service --no-pager -n 100
+journalctl --user -u pilotclaw-daemon.service --no-pager -n 100
 
 # View daemon logs
-journalctl --user -u clawpilot-daemon.service --no-pager -n 50
+journalctl --user -u pilotclaw-daemon.service --no-pager -n 50
 ```
 
 Windows:
 
 ```powershell
-schtasks /Query /TN Clawpilot-daemon /FO LIST /V
-schtasks /Run /TN Clawpilot-daemon
-Get-ChildItem $env:LOCALAPPDATA\Clawpilot\inbox
-Get-ChildItem $env:LOCALAPPDATA\Clawpilot\processed
-Get-Content $env:LOCALAPPDATA\Clawpilot\logs\daemon-{name}.log -Tail 50
+schtasks /Query /TN PilotClaw-daemon /FO LIST /V
+schtasks /Run /TN PilotClaw-daemon
+Get-ChildItem $env:LOCALAPPDATA\PilotClaw\inbox
+Get-ChildItem $env:LOCALAPPDATA\PilotClaw\processed
+Get-Content $env:LOCALAPPDATA\PilotClaw\logs\daemon-{name}.log -Tail 50
 ```
 
-If PowerShell blocks scripts, run the installed `clawpilot.cmd` shim or start PowerShell with:
+If PowerShell blocks scripts, run the installed `pilotclaw.cmd` shim or start PowerShell with:
 
 ```powershell
 Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
@@ -993,7 +996,7 @@ age --version
 age-keygen --version
 
 # Check permissions
-ls -la ~/.clawpilot/vault/
+ls -la ~/.pilotclaw/vault/
 ```
 
 ### Memory-db errors
@@ -1003,18 +1006,18 @@ ls -la ~/.clawpilot/vault/
 sudo apt install sqlite3
 
 # Check database
-sqlite3 ~/.clawpilot/memory.db ".tables"
-sqlite3 ~/.clawpilot/memory.db "SELECT count(*) FROM memories;"
+sqlite3 ~/.pilotclaw/memory.db ".tables"
+sqlite3 ~/.pilotclaw/memory.db "SELECT count(*) FROM memories;"
 ```
 
 ### Spawn sessions dying early
 
 ```bash
 # Check session log
-cat ~/.clawpilot/spawned/{name}/output.log
+cat ~/.pilotclaw/spawned/{name}/output.log
 
 # Check metadata
-cat ~/.clawpilot/spawned/{name}/meta.json
+cat ~/.pilotclaw/spawned/{name}/meta.json
 
 # Verify copilot is in PATH
 which copilot

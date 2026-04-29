@@ -1,4 +1,4 @@
-// Clawpilot CLI — OpenClaw-compatible gateway extension
+// PilotClaw CLI — OpenClaw-compatible gateway extension
 import { joinSession } from "@github/copilot-sdk/extension";
 import { fileURLToPath } from "node:url";
 import { dirname, join, resolve } from "node:path";
@@ -9,8 +9,8 @@ import { activeStatus, daemonReload, removeUserUnit, stopDisable, writeUserUnit,
 import { createOnLogonTask, deleteTask, endTask, queryTask, runTask } from "../_lib/taskscheduler.mjs";
 import { isProcessRunning, killProcessTree } from "../_lib/spawn-backend.mjs";
 
-const GATEWAY_UNIT = "clawpilot-gateway";
-const WINDOWS_GATEWAY_TASK = "Clawpilot-gateway";
+const GATEWAY_UNIT = "pilotclaw-gateway";
+const WINDOWS_GATEWAY_TASK = "PilotClaw-gateway";
 const EXTENSION_DIR = dirname(fileURLToPath(import.meta.url));
 const SERVER_ENTRY = resolve(EXTENSION_DIR, "server-entry.mjs");
 
@@ -24,7 +24,7 @@ function quoteWin(value) {
 
 function buildGatewayService() {
     return `[Unit]
-Description=Clawpilot OpenClaw-compatible gateway
+Description=PilotClaw OpenClaw-compatible gateway
 
 [Service]
 Type=simple
@@ -76,8 +76,8 @@ function formatRuntime(doc) {
 const session = await joinSession({
     tools: [
         {
-            name: "clawpilot_gateway_start",
-            description: "Start the OpenClaw-compatible Clawpilot gateway on localhost.",
+            name: "pilotclaw_gateway_start",
+            description: "Start the OpenClaw-compatible PilotClaw gateway on localhost.",
             parameters: { type: "object", properties: {} },
             handler: async () => {
                 if (IS_MACOS) {
@@ -100,8 +100,8 @@ const session = await joinSession({
             },
         },
         {
-            name: "clawpilot_gateway_status",
-            description: "Show Clawpilot gateway status, URL, token, and platform service/task state.",
+            name: "pilotclaw_gateway_status",
+            description: "Show PilotClaw gateway status, URL, token, and platform service/task state.",
             parameters: { type: "object", properties: {} },
             handler: async () => {
                 const platform = IS_WINDOWS
@@ -111,8 +111,8 @@ const session = await joinSession({
             },
         },
         {
-            name: "clawpilot_gateway_stop",
-            description: "Stop and disable the Clawpilot compatibility gateway.",
+            name: "pilotclaw_gateway_stop",
+            description: "Stop and disable the PilotClaw compatibility gateway.",
             parameters: { type: "object", properties: {} },
             handler: async () => {
                 const doc = await runtime();
@@ -129,14 +129,14 @@ const session = await joinSession({
             },
         },
         {
-            name: "clawpilot_gateway_url",
+            name: "pilotclaw_gateway_url",
             description: "Return the gateway URL and bearer token for clients.",
             parameters: { type: "object", properties: {} },
             handler: async () => formatRuntime(await runtime()),
         },
         {
-            name: "clawpilot_gateway_logs",
-            description: "Show recent Clawpilot gateway logs.",
+            name: "pilotclaw_gateway_logs",
+            description: "Show recent PilotClaw gateway logs.",
             parameters: {
                 type: "object",
                 properties: {

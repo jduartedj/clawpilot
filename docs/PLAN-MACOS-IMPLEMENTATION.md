@@ -2,7 +2,7 @@
 
 ## Goal
 
-Add first-class Clawpilot support on macOS using launchd while preserving the existing Clawpilot tool surface.
+Add first-class PilotClaw support on macOS using launchd while preserving the existing PilotClaw tool surface.
 
 ## Prerequisites
 
@@ -14,21 +14,21 @@ Add first-class Clawpilot support on macOS using launchd while preserving the ex
 
 | Feature | macOS backend |
 |---|---|
-| Launcher | shell launcher in `~/.local/bin/clawpilot` |
+| Launcher | shell launcher in `~/.local/bin/pilotclaw` |
 | Installer | `install.command` wrapper plus shell installer support |
 | Scheduler | LaunchAgents in `~/Library/LaunchAgents` |
 | Heartbeat | Same launchd scheduler backend |
 | Daemon | launchd `WatchPaths` or long-running Node watcher |
 | Spawn | POSIX detached child process groups |
-| Logs | `~/.clawpilot/logs` plus LaunchAgent stdout/stderr files |
-| State | `~/.clawpilot`, optionally symlinked to `~/Library/Application Support/Clawpilot` later |
-| Extensions | `~/.copilot/extensions/clawpilot-*` |
+| Logs | `~/.pilotclaw/logs` plus LaunchAgent stdout/stderr files |
+| State | `~/.pilotclaw`, optionally symlinked to `~/Library/Application Support/PilotClaw` later |
+| Extensions | `~/.copilot/extensions/pilotclaw-*` |
 
 ## Implementation sequence
 
 1. Add macOS paths in `platform.mjs`.
 2. Add `launchd.mjs` scheduler backend:
-   - write `com.clawpilot.<name>.plist`.
+   - write `com.pilotclaw.<name>.plist`.
    - bootstrap/bootout/kickstart jobs.
    - map schedule subset to `StartCalendarInterval` or `StartInterval`.
 3. Add heartbeat support via the same backend.
@@ -61,12 +61,12 @@ Unsupported patterns should fail clearly with a suggested supported alternative.
 When Lucius is available:
 
 1. Fresh clone and `install.command`.
-2. `clawpilot` launches Copilot.
-3. `clawpilot_schedule` creates a loaded LaunchAgent.
+2. `pilotclaw` launches Copilot.
+3. `pilotclaw_schedule` creates a loaded LaunchAgent.
 4. `launchctl list` shows the job.
-5. `clawpilot_schedule_run_now` kicks the job.
-6. `clawpilot_schedule_cancel` unloads/removes it.
-7. `clawpilot_daemon_setup` installs inbox watcher.
+5. `pilotclaw_schedule_run_now` kicks the job.
+6. `pilotclaw_schedule_cancel` unloads/removes it.
+7. `pilotclaw_daemon_setup` installs inbox watcher.
 8. Dropping inbox JSON triggers processing.
 9. Reboot/login and verify LaunchAgents reload.
 

@@ -1,4 +1,4 @@
-// Clawpilot CLI — channels extension
+// PilotClaw CLI — channels extension
 // Native multi-channel messaging. Supports Telegram, Discord, Slack directly.
 // Zero external dependencies — pure Node.js fetch() calls.
 import { joinSession } from "@github/copilot-sdk/extension";
@@ -6,7 +6,7 @@ import { readFile, writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { homedir } from "node:os";
 
-const CONFIG_DIR = join(homedir(), ".clawpilot", "channels");
+const CONFIG_DIR = join(homedir(), ".pilotclaw", "channels");
 const CONFIG_FILE = join(CONFIG_DIR, "config.json");
 
 async function ensureDir(dir) {
@@ -177,10 +177,10 @@ async function resolveChannel(config, channel) {
 const session = await joinSession({
     tools: [
         {
-            name: "clawpilot_send_message",
+            name: "pilotclaw_send_message",
             description:
                 "Send a message to a chat channel (Discord, Telegram, Slack). " +
-                "Requires channel to be configured via clawpilot_channel_setup. " +
+                "Requires channel to be configured via pilotclaw_channel_setup. " +
                 "Target format depends on channel: chat_id for Telegram, channel_id for Discord, channel name for Slack.",
             parameters: {
                 type: "object",
@@ -209,7 +209,7 @@ const session = await joinSession({
                 const config = await loadConfig();
                 const ch = await resolveChannel(config, channel);
                 if (!ch || !ch.token) {
-                    return { textResultForLlm: `Channel '${channel}' not configured. Use clawpilot_channel_setup first.`, resultType: "failure" };
+                    return { textResultForLlm: `Channel '${channel}' not configured. Use pilotclaw_channel_setup first.`, resultType: "failure" };
                 }
 
                 try {
@@ -233,7 +233,7 @@ const session = await joinSession({
             },
         },
         {
-            name: "clawpilot_read_messages",
+            name: "pilotclaw_read_messages",
             description: "Read recent messages from a chat channel.",
             parameters: {
                 type: "object",
@@ -253,7 +253,7 @@ const session = await joinSession({
                 const config = await loadConfig();
                 const ch = await resolveChannel(config, channel);
                 if (!ch || !ch.token) {
-                    return { textResultForLlm: `Channel '${channel}' not configured. Use clawpilot_channel_setup first.`, resultType: "failure" };
+                    return { textResultForLlm: `Channel '${channel}' not configured. Use pilotclaw_channel_setup first.`, resultType: "failure" };
                 }
 
                 const count = args.count || 10;
@@ -283,7 +283,7 @@ const session = await joinSession({
             },
         },
         {
-            name: "clawpilot_channel_status",
+            name: "pilotclaw_channel_status",
             description: "Show status of all configured messaging channels.",
             parameters: { type: "object", properties: {} },
             handler: async () => {
@@ -291,7 +291,7 @@ const session = await joinSession({
                 const channels = Object.entries(config.channels || {});
 
                 if (channels.length === 0) {
-                    return "No channels configured.\n\nSupported channels: telegram, discord, slack\nUse clawpilot_channel_setup to add one.";
+                    return "No channels configured.\n\nSupported channels: telegram, discord, slack\nUse pilotclaw_channel_setup to add one.";
                 }
 
                 let output = "## Configured Channels\n";
@@ -326,9 +326,9 @@ const session = await joinSession({
             },
         },
         {
-            name: "clawpilot_channel_setup",
+            name: "pilotclaw_channel_setup",
             description:
-                "Configure a messaging channel. Stores credentials in ~/.clawpilot/channels/config.json.\n" +
+                "Configure a messaging channel. Stores credentials in ~/.pilotclaw/channels/config.json.\n" +
                 "Telegram: provide bot token (get from @BotFather).\n" +
                 "Discord: provide bot token (from Discord Developer Portal).\n" +
                 "Slack: provide bot token or webhook URL.",
@@ -369,7 +369,7 @@ const session = await joinSession({
                             configuredAt: new Date().toISOString(),
                         };
                         await saveConfig(config);
-                        return `Telegram configured! Bot: @${me.username} (${me.first_name})\n\nTo send: clawpilot_send_message(channel: "telegram", target: "<chat_id>", message: "hello")`;
+                        return `Telegram configured! Bot: @${me.username} (${me.first_name})\n\nTo send: pilotclaw_send_message(channel: "telegram", target: "<chat_id>", message: "hello")`;
                     } catch (e) {
                         return { textResultForLlm: `Invalid Telegram token: ${e.message}`, resultType: "failure" };
                     }
@@ -389,7 +389,7 @@ const session = await joinSession({
                             configuredAt: new Date().toISOString(),
                         };
                         await saveConfig(config);
-                        return `Discord configured! Bot: ${me.username}\n\nTo send: clawpilot_send_message(channel: "discord", target: "<channel_id>", message: "hello")`;
+                        return `Discord configured! Bot: ${me.username}\n\nTo send: pilotclaw_send_message(channel: "discord", target: "<channel_id>", message: "hello")`;
                     } catch (e) {
                         return { textResultForLlm: `Invalid Discord token: ${e.message}`, resultType: "failure" };
                     }
@@ -402,12 +402,12 @@ const session = await joinSession({
                         configuredAt: new Date().toISOString(),
                     };
                     await saveConfig(config);
-                    return `Slack configured!\n\nTo send: clawpilot_send_message(channel: "slack", target: "<channel>", message: "hello")`;
+                    return `Slack configured!\n\nTo send: pilotclaw_send_message(channel: "slack", target: "<channel>", message: "hello")`;
                 }
             },
         },
         {
-            name: "clawpilot_channel_remove",
+            name: "pilotclaw_channel_remove",
             description: "Remove a configured channel.",
             parameters: {
                 type: "object",

@@ -9,7 +9,7 @@ export function gatewayCapabilities() {
         tokenStreaming: false,
         toolCallRecords: "best-effort",
         schedules: IS_LINUX || IS_WINDOWS,
-        openclawCronBridge: "read+trigger-through-clawpilot",
+        openclawCronBridge: "read+trigger-through-pilotclaw",
         heartbeat: true,
         channels: "status+dry-run-send",
         memory: "search-only",

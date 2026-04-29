@@ -30,7 +30,7 @@ async function appendOutput(sessionId, runIdValue, chunk) {
 function scrubbedChildEnv() {
     const env = { ...process.env };
     for (const key of Object.keys(env)) {
-        if (key.startsWith("CLAWPILOT_GATEWAY_")) delete env[key];
+        if (key.startsWith("PILOTCLAW_GATEWAY_")) delete env[key];
     }
     return env;
 }

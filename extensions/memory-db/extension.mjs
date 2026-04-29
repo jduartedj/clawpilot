@@ -1,4 +1,4 @@
-// Clawpilot CLI — memory-db extension
+// PilotClaw CLI — memory-db extension
 // SQLite with JSON columns — NoSQL-style document store with SQL power.
 // Auto-captures Copilot session history from events.jsonl.
 // Stores events as JSON blobs, queryable via json_extract + FTS5.
@@ -8,7 +8,7 @@ import { mkdir, readFile, readdir, unlink, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { homedir } from "node:os";
 
-const DB_PATH = join(homedir(), ".clawpilot", "memory.db");
+const DB_PATH = join(homedir(), ".pilotclaw", "memory.db");
 const MEMORY_DIR = join(homedir(), "clawd", "memory");
 const SESSION_STATE_DIR = join(homedir(), ".copilot", "session-state");
 const ROTATE_DAYS = 7;
@@ -45,7 +45,7 @@ function sqliteStdin(sql) {
 }
 
 async function ensureSchema() {
-    await ensureDir(join(homedir(), ".clawpilot"));
+    await ensureDir(join(homedir(), ".pilotclaw"));
     await sqlite(`
         PRAGMA journal_mode=WAL;
 
@@ -178,7 +178,7 @@ async function ingestSession(sessionId, eventsPath, reason) {
 const session = await joinSession({
     tools: [
         {
-            name: "clawpilot_memory_search",
+            name: "pilotclaw_memory_search",
             description: "Search across all archived memories using full-text search. Finds past decisions, events, lessons, and session summaries.",
             parameters: {
                 type: "object",
@@ -203,7 +203,7 @@ const session = await joinSession({
             },
         },
         {
-            name: "clawpilot_memory_rotate",
+            name: "pilotclaw_memory_rotate",
             description: "Rotate old daily memory files (older than 7 days) into the SQLite database. Active memory files stay untouched.",
             parameters: { type: "object", properties: {} },
             handler: async () => {
@@ -239,7 +239,7 @@ const session = await joinSession({
             },
         },
         {
-            name: "clawpilot_memory_recent",
+            name: "pilotclaw_memory_recent",
             description: "Retrieve recent memories from the database.",
             parameters: {
                 type: "object",
@@ -260,7 +260,7 @@ const session = await joinSession({
             },
         },
         {
-            name: "clawpilot_memory_store",
+            name: "pilotclaw_memory_store",
             description: "Store a memory or important decision in the database for future reference.",
             parameters: {
                 type: "object",
@@ -315,7 +315,7 @@ const session = await joinSession({
                 }
 
                 if (ingested > 0) {
-                    return { additionalContext: `[Clawpilot Memory] Ingested ${ingested} previous session(s) into the database.` };
+                    return { additionalContext: `[PilotClaw Memory] Ingested ${ingested} previous session(s) into the database.` };
                 }
             } catch { /* best effort */ }
         },

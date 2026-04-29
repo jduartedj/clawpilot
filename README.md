@@ -1,8 +1,8 @@
-# Clawpilot CLI 🦞🤖
+# PilotClaw CLI 🛩️🦞
 
-> Autonomous superpowers for GitHub Copilot CLI — background sessions, scheduled tasks, proactive heartbeats, messaging, encrypted secrets, and more.
+> Mission control for GitHub Copilot CLI — persistent agents, background work, schedules, messaging, memory, vaults, and an OpenClaw-compatible gateway.
 
-Clawpilot is a set of **extensions** for [GitHub Copilot CLI](https://github.com/github/copilot-cli) that add always-on, autonomous capabilities. Copilot CLI stays untouched and updates independently — Clawpilot layers on top.
+PilotClaw turns [GitHub Copilot CLI](https://github.com/github/copilot-cli) into an always-on local command center. Copilot CLI stays untouched and updates independently; PilotClaw layers autonomy, persistence, scheduling, and integration tools on top.
 
 ## Features
 
@@ -21,15 +21,17 @@ Clawpilot is a set of **extensions** for [GitHub Copilot CLI](https://github.com
 
 **42 tools** total. Zero npm dependencies — pure Node.js built-ins + native system utilities.
 
+> Renamed from **Clawpilot**. The installer migrates old state, extensions, services/tasks, and keeps a `clawpilot` compatibility launcher pointed at `pilotclaw`.
+
 ## Quick Start
 
 ```bash
 # Linux install (auto-installs Copilot CLI if needed)
-git clone https://github.com/jduartedj/clawpilot.git ~/.clawpilot
-cd ~/.clawpilot && ./install.sh
+git clone https://github.com/jduartedj/pilotclaw.git ~/.pilotclaw/src
+cd ~/.pilotclaw/src && ./install.sh
 
 # Use (always resumes your "main" session)
-clawpilot
+pilotclaw
 ```
 
 Linux requires **systemd** for scheduler, heartbeat, and daemon. Optional: `sudo apt install sqlite3 age` for memory-db and vault.
@@ -37,23 +39,23 @@ Linux requires **systemd** for scheduler, heartbeat, and daemon. Optional: `sudo
 ### Windows preview
 
 ```powershell
-git clone https://github.com/jduartedj/clawpilot.git $env:LOCALAPPDATA\Clawpilot\src
-cd $env:LOCALAPPDATA\Clawpilot\src
+git clone https://github.com/jduartedj/pilotclaw.git $env:LOCALAPPDATA\PilotClaw\src
+cd $env:LOCALAPPDATA\PilotClaw\src
 .\install.ps1
 
-clawpilot
+pilotclaw
 ```
 
-Windows support uses Task Scheduler for `scheduler`, `heartbeat`, and daemon logon startup. State lives under `%LOCALAPPDATA%\Clawpilot`; `~\.clawpilot` is still created as a compatibility directory. Optional dependencies: `winget install SQLite.SQLite` and `winget install FiloSottile.age`.
+Windows support uses Task Scheduler for `scheduler`, `heartbeat`, and daemon logon startup. State lives under `%LOCALAPPDATA%\PilotClaw`; `~\.pilotclaw` is still created as a compatibility directory. Optional dependencies: `winget install SQLite.SQLite` and `winget install FiloSottile.age`.
 
 ## Usage
 
 ```bash
-clawpilot              # Resume main session (autopilot + yolo mode)
-clawpilot --no-yolo    # Resume without auto-approving tools
-clawpilot --no-autopilot  # Resume in interactive mode
-clawpilot --session work  # Use a different named session
-clawpilot -p "do X"   # Non-interactive autonomous run
+pilotclaw              # Resume main session (autopilot + yolo mode)
+pilotclaw --no-yolo    # Resume without auto-approving tools
+pilotclaw --no-autopilot  # Resume in interactive mode
+pilotclaw --session work  # Use a different named session
+pilotclaw -p "do X"   # Non-interactive autonomous run
 copilot                # Normal Copilot CLI (new session each time)
 ```
 
@@ -77,13 +79,13 @@ Once running, just ask naturally:
 │  GitHub Copilot CLI                     │ ← Untouched, updates independently
 │  (proprietary, any version)             │
 ├─────────────────────────────────────────┤
-│  Clawpilot Extensions (10)              │ ← ~/.copilot/extensions/
+│  PilotClaw Extensions (10)              │ ← ~/.copilot/extensions/
 │  spawn · scheduler · heartbeat          │
 │  channels · daemon · gateway            │
 │  orchestrator · memory-db               │
 │  vault · fallback                       │
 ├─────────────────────────────────────────┤
-│  Clawpilot State                        │ ← ~/.clawpilot/ (Linux), %LOCALAPPDATA%\Clawpilot (Windows)
+│  PilotClaw State                        │ ← ~/.pilotclaw/ (Linux), %LOCALAPPDATA%\PilotClaw (Windows)
 │  spawned/ · heartbeat/ · vault/         │
 │  scheduler/ · inbox/ · memory.db        │
 └─────────────────────────────────────────┘
@@ -92,9 +94,9 @@ Once running, just ask naturally:
 ### Key design decisions
 
 - **Copilot CLI is a prerequisite**, not bundled — `copilot update` works independently
-- **State isolated** in `~/.clawpilot/` — zero coupling with `~/.copilot/` internals
+- **State isolated** in `~/.pilotclaw/` — zero coupling with `~/.copilot/` internals
 - **Auto-resume** — quit mid-task and work continues in background; on return, results are handed back seamlessly
-- **Persistent session** — `clawpilot` command always resumes your "main" session
+- **Persistent session** — `pilotclaw` command always resumes your "main" session
 - **Smart workspace** — auto-detects OpenClaw workspace dir, falls back to `~/clawd` or `~/`
 - **OpenClaw-aware scheduler** — imports existing `~/.openclaw/cron` jobs as read-only `openclaw:<id>` entries
 - **OpenClaw agent sync** — imports OpenClaw agent config + safe `agentDir`/workspace definition files into Copilot custom agents on startup
@@ -106,13 +108,15 @@ Once running, just ask naturally:
 ## Update
 
 ```bash
+cd ~/.pilotclaw/src && git pull && ./install.sh
+# Existing Clawpilot checkout? This also works:
 cd ~/.clawpilot && git pull && ./install.sh
 ```
 
 Windows:
 
 ```powershell
-cd $env:LOCALAPPDATA\Clawpilot\src
+cd $env:LOCALAPPDATA\PilotClaw\src
 git pull
 .\install.ps1
 ```
@@ -120,13 +124,13 @@ git pull
 ## Uninstall
 
 ```bash
-cd ~/.clawpilot && ./uninstall.sh
+cd ~/.pilotclaw/src && ./uninstall.sh
 ```
 
 Windows:
 
 ```powershell
-cd $env:LOCALAPPDATA\Clawpilot\src
+cd $env:LOCALAPPDATA\PilotClaw\src
 .\uninstall.ps1
 ```
 
@@ -137,7 +141,7 @@ cd $env:LOCALAPPDATA\Clawpilot\src
 - **[Linux Refactor Plan](docs/PLAN-LINUX-REFACTOR.md)** — platform abstraction work before Windows/macOS
 - **[Windows Implementation Plan](docs/PLAN-WINDOWS-IMPLEMENTATION.md)** — Task Scheduler and PowerShell support
 - **[macOS Implementation Plan](docs/PLAN-MACOS-IMPLEMENTATION.md)** — launchd and LaunchAgent support
-- **[Gateway Compatibility Plan](docs/PLAN-GATEWAY-COMPATIBILITY.md)** — OpenClaw-style Clawpilot gateway strategy and parked features
+- **[Gateway Compatibility Plan](docs/PLAN-GATEWAY-COMPATIBILITY.md)** — OpenClaw-style PilotClaw gateway strategy and parked features
 
 ## License
 

@@ -104,7 +104,7 @@ export async function handleGatewayMethod(methodName, params = {}, context = {})
             return {
                 type: "hello-ok",
                 protocol: 3,
-                server: { version: "clawpilot-openclaw-compat/0.1", connId: context.connId || null },
+                server: { version: "pilotclaw-openclaw-compat/0.1", connId: context.connId || null },
                 features: {
                     methods: [
                         "health", "status", "chat.history", "chat.send", "chat.abort", "agent", "agent.wait",
@@ -121,7 +121,7 @@ export async function handleGatewayMethod(methodName, params = {}, context = {})
                     ],
                     events: ["connect.challenge", "chat", "agent", "sessions.changed", "session.message", "session.tool", "cron", "node.connected", "node.invoke.request", "health", "tick", "shutdown"],
                 },
-                snapshot: { presence: [], health: { ok: true, backend: "clawpilot" }, stateVersion: { presence: 1, health: 1 } },
+                snapshot: { presence: [], health: { ok: true, backend: "pilotclaw" }, stateVersion: { presence: 1, health: 1 } },
                 auth: { role: "operator", scopes: ["operator.read", "operator.write"] },
                 policy: { maxPayload: 1048576, maxBufferedBytes: 1048576, tickIntervalMs: 30000 },
                 compatibility: gatewayCapabilities(),
@@ -132,9 +132,9 @@ export async function handleGatewayMethod(methodName, params = {}, context = {})
         case "gateway.capabilities":
             return gatewayCapabilities();
         case "system.presence":
-            return { presence: [{ id: "clawpilot", kind: "backend", status: "online", label: "Clawpilot compatibility gateway" }] };
+            return { presence: [{ id: "pilotclaw", kind: "backend", status: "online", label: "PilotClaw compatibility gateway" }] };
         case "config.get":
-            return { backend: "clawpilot", compatibility: gatewayCapabilities(), config: {} };
+            return { backend: "pilotclaw", compatibility: gatewayCapabilities(), config: {} };
         case "chat.send":
             return await runCopilotTurn({
                 sessionId: sessionKey(params),

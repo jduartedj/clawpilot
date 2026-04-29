@@ -8,7 +8,7 @@ await ensureDir(GATEWAY_LOGS_DIR);
 
 const { runtime } = await startGatewayServer();
 await appendFile(`${GATEWAY_LOGS_DIR}/server.log`, `[${new Date().toISOString()}] Gateway listening on http://${runtime.host}:${runtime.port}\n`);
-console.log(`Clawpilot gateway listening on http://${runtime.host}:${runtime.port}`);
+console.log(`PilotClaw gateway listening on http://${runtime.host}:${runtime.port}`);
 
 process.on("SIGTERM", () => process.exit(0));
 process.on("SIGINT", () => process.exit(0));
