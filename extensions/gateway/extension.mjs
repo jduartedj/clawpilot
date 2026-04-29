@@ -13,6 +13,7 @@ const GATEWAY_UNIT = "pilotclaw-gateway";
 const WINDOWS_GATEWAY_TASK = "PilotClaw-gateway";
 const EXTENSION_DIR = dirname(fileURLToPath(import.meta.url));
 const SERVER_ENTRY = resolve(EXTENSION_DIR, "server-entry.mjs");
+const NODE_BIN = process.env.PILOTCLAW_NODE_BIN || "node";
 
 function quotePowerShellLiteral(value) {
     return `'${String(value).replace(/'/g, "''")}'`;
@@ -28,7 +29,7 @@ Description=PilotClaw OpenClaw-compatible gateway
 
 [Service]
 Type=simple
-ExecStart=${process.execPath} ${SERVER_ENTRY}
+ExecStart=/usr/bin/env ${NODE_BIN} ${SERVER_ENTRY}
 Environment=HOME=${HOME}
 Environment=PATH=${process.env.PATH}
 Restart=on-failure
@@ -44,7 +45,7 @@ function buildWindowsGatewayCommand() {
     const logFile = join(GATEWAY_LOGS_DIR, "server.log");
     const command = [
         "&",
-        quotePowerShellLiteral(process.execPath),
+        quotePowerShellLiteral(NODE_BIN),
         quotePowerShellLiteral(SERVER_ENTRY),
         "*>",
         quotePowerShellLiteral(logFile),

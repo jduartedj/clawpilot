@@ -9,7 +9,7 @@ import { ensureGatewayDir, sessionPaths, readJsonl } from "./gateway-session.mjs
 import { initializeGatewayNodes, registerGatewayNode, releaseGatewayNodeReservation, reserveGatewayNodeConnect, unregisterGatewayNode } from "./gateway-node-registry.mjs";
 import { restrictWindowsFileAccess } from "./taskscheduler.mjs";
 
-export const DEFAULT_GATEWAY_PORT = 18789;
+export const DEFAULT_GATEWAY_PORT = 17324;
 
 const MAX_PAYLOAD_BYTES = 1024 * 1024;
 const OPENCLAW_DEVICE_AUTH_FILE = `${HOME}/.openclaw/identity/device-auth.json`;

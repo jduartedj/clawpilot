@@ -586,7 +586,7 @@ Windows PowerShell:
 
 Runs a compatibility gateway so clients such as Jackson can connect to PilotClaw with an OpenClaw-style interface. Linux uses a systemd user service; Windows uses a `PilotClaw-gateway` Task Scheduler logon task. macOS lifecycle support is intentionally parked until the macOS platform plan resumes.
 
-The gateway defaults to `127.0.0.1:18789`, matching OpenClaw's local gateway target. If that port is already occupied, set `PILOTCLAW_GATEWAY_PORT` before starting the service. The gateway writes runtime metadata, including the bearer token, under the platform state directory:
+The gateway defaults to `127.0.0.1:17324` so it can run beside an existing OpenClaw gateway on `18789`. To make PilotClaw impersonate the OpenClaw local gateway port directly, stop the other gateway first and set `PILOTCLAW_GATEWAY_PORT=18789` before starting the service. The gateway writes runtime metadata, including the bearer token, under the platform state directory:
 
 ```text
 ~/.pilotclaw/gateway/runtime/runtime.json                 # Linux
